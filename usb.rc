@@ -1,0 +1,28 @@
+#[link(name = "usb", vers = "0.1", author = "Kevin Mehall")];
+
+mod libusb;
+mod usb;
+
+fn main() {
+	let c = usb::Context::new();
+	c.setDebug(4);
+	
+	let devices = c.listDevices();
+
+	for devices.iter().advance |dev| {
+		let desc = dev.descriptor();
+		println(fmt!("Device %i.%i %04x:%04x",
+			dev.bus(),
+			dev.address(),
+			desc.idVendor as uint,
+			desc.idProduct as uint
+		));
+	}
+
+	match c.find_by_vid_pid(0x59e3, 0xcee1) {
+		Some(dev) => {
+			let handle = dev.open();
+		},
+		None => println("Device not found"),
+	}
+}
