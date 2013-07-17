@@ -76,6 +76,36 @@ impl Context {
 			desc.idVendor as uint == vid && desc.idProduct as uint == pid
 		})
 	}
+
+	priv fn device_opened(&self) {
+		let count = unsafe { &mut (*self.box.get()).open_device_count };
+		let old_count = count.fetch_add(1, SeqCst);
+
+		if old_count == 0 {
+			println("Starting task");
+
+			let tbox = self.box.clone();
+
+			do task::spawn_sched(task::SingleThreaded) {
+				unsafe {
+					let ctx = (*tbox.get()).ctx;
+					let count = &(*tbox.get()).open_device_count;
+
+					while (count.load(SeqCst) > 0) {
+						println("Task looped");
+						libusb_handle_events(ctx);
+					}
+
+					println("Task exited");
+				}
+			}
+		}
+	}
+
+	priv fn device_closed(&self) {
+		let count = unsafe { &mut (*self.box.get()).open_device_count };
+		count.fetch_sub(1, SeqCst);
+	}
 }
 
 impl Clone for Context{
@@ -115,6 +145,7 @@ impl Device {
 			let mut handle: *mut libusb_device_handle = intrinsics::uninit();
 			let r = libusb_open(self.dev, &mut handle);
 			if (r == 0){
+				self.ctx.device_opened();
 				Ok(DeviceHandle {
 					box: UnsafeAtomicRcBox::new(DeviceHandleData {
 						dev: handle,
@@ -157,6 +188,7 @@ impl Drop for DeviceHandleData {
 	fn drop(&self) {
 		unsafe {
 			println(fmt!("Dropping DeviceHandleData %?", self));
+			self.ctx.device_closed();
 			libusb_close(self.dev);
 		}
 	}

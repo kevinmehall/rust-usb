@@ -9,6 +9,8 @@ pub extern{
 	pub fn libusb_init(ctx: *mut *mut libusb_context) -> c_int;
 	pub fn libusb_exit(ctx: *mut libusb_context);
 	pub fn libusb_set_debug(ctx: *mut libusb_context, level: c_int);
+	pub fn libusb_handle_events(ctx: *mut libusb_context) -> c_int;
+
 	pub fn libusb_get_device_list(ctx: *mut libusb_context, list: *mut *mut *mut libusb_device) -> size_t;
 	pub fn libusb_free_device_list(list: *mut *mut libusb_device, unref_devices: c_int);
 
