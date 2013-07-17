@@ -21,7 +21,22 @@ fn main() {
 
 	match c.find_by_vid_pid(0x59e3, 0xcee1) {
 		Some(dev) => {
-			let handle = dev.open();
+			match dev.open() {
+				Ok(handle) => {
+					let handle1 = handle.clone();
+					let handle2 = handle.clone();
+
+					do spawn {
+						println(fmt!("1 Opened device %?", handle1.ptr()));
+					}
+					do spawn {
+						println(fmt!("2 Opened device %?", handle2.ptr()));
+					}
+				},
+				Err(code) => {
+					println(fmt!("Error opening device: %?", code));
+				}
+			}
 		},
 		None => println("Device not found"),
 	}
