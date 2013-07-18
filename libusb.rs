@@ -474,7 +474,7 @@ pub enum libusb_transfer_status {
 
 /** \ingroup asyncio
  * Isochronous packet descriptor. */
-struct libusb_iso_packet_descriptor {
+pub struct libusb_iso_packet_descriptor {
 	/** Length of data to request in this packet */
 	length: c_uint,
 
@@ -485,25 +485,23 @@ struct libusb_iso_packet_descriptor {
 	status: libusb_transfer_status,
 }
 
-type libusb_transfer_cb_fn = extern fn(transfer: *mut libusb_transfer) -> ();
-
 /** \ingroup asyncio
  * The generic USB transfer structure. The user populates this structure and
  * then submits it in order to request a transfer. After the transfer has
  * completed, the library populates the transfer with the results and passes
  * it back to the user.
  */
-struct libusb_transfer {
+pub struct libusb_transfer {
 	/** Handle of the device that this transfer will be submitted to */
 	dev_handle: *mut libusb_device_handle,
 
 	/** A bitwise OR combination of \ref libusb_transfer_flags. */
 	flags: uint8_t,
 
-	/** Address of the endpowhere: c_int this transfer will be sent. */
+	/** Address of the endpoint where this transfer will be sent. */
 	endpoint: uint8_t,
 
-	/** Type of the endpofrom: c_int \ref libusb_transfer_type
+	/** Type of the endpoint from \ref libusb_transfer_type
 	    
 	    Note: name differs from libusb because `type` is a Rust keyword.
 	*/
@@ -527,18 +525,18 @@ struct libusb_transfer {
 
 	/** Actual length of data that was transferred. Read-only, and only for
 	 * use within transfer callback function. Not valid for isochronous
-	 * endpotransfers: c_int. */
+	 * endpoints. */
 	actual_length: c_int,
 
 	/** Callback function. This will be invoked when the transfer completes,
 	 * fails, or is cancelled. */
-	callback: libusb_transfer_cb_fn,
+	callback: *u8,
 
 	/** User context data to pass to the callback function. */
 	user_data: *mut c_void,
 
 	/** Data buffer */
-	buffer: *uint8_t,
+	buffer: *mut uint8_t,
 
 	/** Number of isochronous packets. Only used for I/O with isochronous
 	 * endpoints. */

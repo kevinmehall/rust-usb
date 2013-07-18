@@ -6,6 +6,9 @@ use std::ptr::{to_unsafe_ptr, to_mut_unsafe_ptr};
 use std::result::Result;
 use std::iterator::IteratorUtil;
 use std::task;
+use std::comm::{PortOne, ChanOne, oneshot};
+use std::cast::transmute;
+
 
 use std::unstable::sync::UnsafeAtomicRcBox;
 use std::unstable::atomics::{AtomicInt, SeqCst};
@@ -108,6 +111,14 @@ impl Context {
 	}
 }
 
+extern fn rust_usb_callback(transfer: *mut libusb_transfer) {
+	unsafe {
+		println("Got callback");
+		let chan: ~ChanOne<()> = transmute((*transfer).user_data);
+		chan.send(());
+	}
+}
+
 impl Clone for Context{
 	fn clone(&self) -> Context{
 		Context{box: self.box.clone()}
@@ -202,6 +213,55 @@ impl DeviceHandle {
 	pub fn ptr(&self) -> *mut libusb_device_handle {
 		unsafe {
 			(*self.box.get()).dev
+		}
+	}
+
+	pub unsafe fn submit_transfer_sync(&self,
+		endpoint: u8,
+		transfer_type: libusb_transfer_type,
+		length: uint,
+		buffer: *mut u8) {
+
+		let (port, chan): (PortOne<()>, ChanOne<()>) = oneshot();
+
+		let mut t = libusb_transfer {
+			dev_handle: self.ptr(),
+			flags: 0,
+			endpoint: endpoint,
+			transfer_type: transfer_type as u8,
+			timeout: 0,
+			status: LIBUSB_TRANSFER_COMPLETED,
+			length: length as i32,
+			actual_length: 0,
+			callback: rust_usb_callback,
+			user_data: transmute(~chan),
+			buffer: buffer,
+			num_iso_packets: 0,
+		};
+
+		println(fmt!("Submitted %?", t));
+
+		libusb_submit_transfer(&mut t);
+		port.recv();
+	}
+
+	pub fn read(&self,
+			endpoint: u8,
+			transfer_type: libusb_transfer_type,
+			size: uint
+			) -> ~[u8] {
+		let mut buf: ~[u8] = vec::from_elem(size, 0);
+		unsafe {
+			let ptr = vec::raw::to_mut_ptr(buf);
+			self.submit_transfer_sync(endpoint, transfer_type, size, ptr);
+		}
+		return buf; // TODO: actual_length
+	}
+
+	pub fn write(&self, endpoint: u8, transfer_type: libusb_transfer_type, buf: &[u8]) {
+		unsafe {
+			let ptr = vec::raw::to_ptr(buf) as *mut u8;
+			self.submit_transfer_sync(endpoint, transfer_type, buf.len(), ptr);
 		}
 	}
 }

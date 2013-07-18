@@ -5,7 +5,7 @@ mod usb;
 
 fn main() {
 	let c = usb::Context::new();
-	c.setDebug(4);
+	c.setDebug(2);
 	
 	let devices = c.listDevices();
 
@@ -19,7 +19,7 @@ fn main() {
 		));
 	}
 
-	match c.find_by_vid_pid(0x59e3, 0xcee1) {
+	match c.find_by_vid_pid(0x59e3, 0x0a23) {
 		Some(dev) => {
 			match dev.open() {
 				Ok(handle) => {
@@ -28,6 +28,8 @@ fn main() {
 
 					do spawn {
 						println(fmt!("1 Opened device %?", handle1.ptr()));
+						println(fmt!("Read %?", handle1.read(0x81, libusb::LIBUSB_TRANSFER_TYPE_BULK, 64)));
+						handle1.write(0x02, libusb::LIBUSB_TRANSFER_TYPE_BULK, [1,2,3]);
 					}
 					do spawn {
 						println(fmt!("2 Opened device %?", handle2.ptr()));
