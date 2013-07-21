@@ -224,25 +224,21 @@ impl DeviceHandle {
 
 		let (port, chan): (PortOne<()>, ChanOne<()>) = oneshot();
 
-		let mut t = libusb_transfer {
-			dev_handle: self.ptr(),
-			flags: 0,
-			endpoint: endpoint,
-			transfer_type: transfer_type as u8,
-			timeout: 0,
-			status: LIBUSB_TRANSFER_COMPLETED,
-			length: length as i32,
-			actual_length: 0,
-			callback: rust_usb_callback,
-			user_data: transmute(~chan),
-			buffer: buffer,
-			num_iso_packets: 0,
-		};
+		let mut t = libusb_alloc_transfer(0);
+		(*t).dev_handle = self.ptr();
+		(*t).endpoint = endpoint;
+		(*t).transfer_type = transfer_type as u8;
+		(*t).timeout = 0;
+		(*t).length = length as i32;
+		(*t).callback = rust_usb_callback;
+		(*t).user_data = transmute(~chan);
+		(*t).buffer = buffer;
 
 		println(fmt!("Submitted %?", t));
 
-		libusb_submit_transfer(&mut t);
+		libusb_submit_transfer(t);
 		port.recv();
+		libusb_free_transfer(t);
 	}
 
 	pub fn read(&self,
