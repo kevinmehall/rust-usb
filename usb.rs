@@ -8,6 +8,7 @@ use std::iterator::IteratorUtil;
 use std::task;
 use std::comm::{PortOne, ChanOne, oneshot};
 use std::cast::transmute;
+use std::sys::size_of;
 
 
 use std::unstable::sync::UnsafeAtomicRcBox;
@@ -277,6 +278,51 @@ impl DeviceHandle {
 			}
 		}
 	}
+
+	pub fn ctrl_read(&self, bmRequestType: u8, bRequest: u8,
+		wValue:u16, wIndex: u16, length: uint) -> Result<~[u8], libusb_transfer_status> {
+
+		let setup_length = size_of::<libusb_control_setup>();
+		let total_length = setup_length + length as uint;
+		let mut buf: ~[u8] = vec::from_elem(total_length, 0);
+
+		unsafe{
+			let ptr = fill_setup_buf(buf, bmRequestType, bRequest, wValue, wIndex, length);
+
+			let (status, actual_length) = self.submit_transfer_sync(
+				0, LIBUSB_TRANSFER_TYPE_CONTROL, total_length, ptr);
+
+			if status == LIBUSB_TRANSFER_COMPLETED {
+				Ok(buf.slice(setup_length, setup_length+actual_length).to_owned())
+			} else {
+				Err(status)
+			}
+		}
+	}
+
+	pub fn ctrl_write(&self, bmRequestType: u8, bRequest: u8,
+		wValue:u16, wIndex: u16, buf: &[u8]) -> Result<(), libusb_transfer_status> {
+		unsafe {
+			let mut setup_buf = vec::from_elem(size_of::<libusb_control_setup>(), 0);
+			fill_setup_buf(setup_buf, bmRequestType, bRequest, wValue, wIndex, buf.len());
+			self.write(0, LIBUSB_TRANSFER_TYPE_CONTROL, setup_buf+buf)
+		}
+	}
+}
+
+unsafe fn fill_setup_buf(buf: &mut [u8], bmRequestType: u8,
+	bRequest: u8, wValue:u16, wIndex: u16, length: uint) -> *mut u8 {
+	let ptr = vec::raw::to_mut_ptr(buf);
+	let setup = ptr as *mut libusb_control_setup;
+
+	// TODO: these are always little-endian
+	(*setup).bmRequestType = bmRequestType;
+	(*setup).bRequest = bRequest;
+	(*setup).wValue = wValue;
+	(*setup).wIndex = wIndex;
+	(*setup).wLength = length as u16;
+
+	return ptr;
 }
 
 impl Clone for DeviceHandle {
