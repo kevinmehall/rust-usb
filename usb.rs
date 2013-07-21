@@ -220,7 +220,7 @@ impl DeviceHandle {
 		endpoint: u8,
 		transfer_type: libusb_transfer_type,
 		length: uint,
-		buffer: *mut u8) {
+		buffer: *mut u8) -> (libusb_transfer_status, uint) {
 
 		let (port, chan): (PortOne<()>, ChanOne<()>) = oneshot();
 
@@ -238,26 +238,43 @@ impl DeviceHandle {
 
 		libusb_submit_transfer(t);
 		port.recv();
+		let r = ((*t).status, (*t).actual_length as uint);
 		libusb_free_transfer(t);
+		return r;
 	}
 
 	pub fn read(&self,
 			endpoint: u8,
 			transfer_type: libusb_transfer_type,
 			size: uint
-			) -> ~[u8] {
+			) -> Result<~[u8], libusb_transfer_status> {
 		let mut buf: ~[u8] = vec::from_elem(size, 0);
 		unsafe {
 			let ptr = vec::raw::to_mut_ptr(buf);
-			self.submit_transfer_sync(endpoint, transfer_type, size, ptr);
+			let (status, actual_length) = self.submit_transfer_sync(
+				endpoint, transfer_type, size, ptr);
+
+			if status == LIBUSB_TRANSFER_COMPLETED {
+				buf.truncate(actual_length);
+				Ok(buf)
+			} else {
+				Err(status)
+			}
 		}
-		return buf; // TODO: actual_length
 	}
 
-	pub fn write(&self, endpoint: u8, transfer_type: libusb_transfer_type, buf: &[u8]) {
+	pub fn write(&self, endpoint: u8, transfer_type: libusb_transfer_type, buf: &[u8]) -> Result<(), libusb_transfer_status> {
 		unsafe {
 			let ptr = vec::raw::to_ptr(buf) as *mut u8;
-			self.submit_transfer_sync(endpoint, transfer_type, buf.len(), ptr);
+
+			let (status, _) = self.submit_transfer_sync(
+				endpoint, transfer_type, buf.len(), ptr);
+
+			if status == LIBUSB_TRANSFER_COMPLETED {
+				Ok(())
+			} else {
+				Err(status)
+			}
 		}
 	}
 }
