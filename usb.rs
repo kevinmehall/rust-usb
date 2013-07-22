@@ -86,8 +86,6 @@ impl Context {
 		let old_count = count.fetch_add(1, SeqCst);
 
 		if old_count == 0 {
-			println("Starting task");
-
 			let tbox = self.box.clone();
 
 			do task::spawn_sched(task::SingleThreaded) {
@@ -96,11 +94,8 @@ impl Context {
 					let count = &(*tbox.get()).open_device_count;
 
 					while (count.load(SeqCst) > 0) {
-						println("Task looped");
 						libusb_handle_events(ctx);
 					}
-
-					println("Task exited");
 				}
 			}
 		}
@@ -114,7 +109,6 @@ impl Context {
 
 extern fn rust_usb_callback(transfer: *mut libusb_transfer) {
 	unsafe {
-		println("Got callback");
 		let chan: ~ChanOne<()> = transmute((*transfer).user_data);
 		chan.send(());
 	}
@@ -174,7 +168,6 @@ impl Device {
 impl Drop for Device {
 	fn drop(&self) {
 		unsafe {
-			println(fmt!("Dropping device %i.%i at %x", self.bus(), self.address(), to_unsafe_ptr(self) as uint));
 			libusb_unref_device(self.dev);
 		}
 	}
@@ -184,7 +177,6 @@ impl Drop for Device {
 impl Clone for Device {
 	fn clone(&self) -> Device {
 		unsafe {
-			println(fmt!("Cloning device %i.%i at %x", self.bus(), self.address(), to_unsafe_ptr(self) as uint));
 			libusb_ref_device(self.dev);
 		}
 		Device{dev: self.dev, ctx: self.ctx.clone()}
@@ -199,7 +191,6 @@ struct DeviceHandleData{
 impl Drop for DeviceHandleData {
 	fn drop(&self) {
 		unsafe {
-			println(fmt!("Dropping DeviceHandleData %?", self));
 			self.ctx.device_closed();
 			libusb_close(self.dev);
 		}
@@ -234,8 +225,6 @@ impl DeviceHandle {
 		(*t).callback = rust_usb_callback;
 		(*t).user_data = transmute(~chan);
 		(*t).buffer = buffer;
-
-		println(fmt!("Submitted %?", t));
 
 		libusb_submit_transfer(t);
 		port.recv();
@@ -327,7 +316,6 @@ unsafe fn fill_setup_buf(buf: &mut [u8], bmRequestType: u8,
 
 impl Clone for DeviceHandle {
 	fn clone(&self) -> DeviceHandle {
-		println(fmt!("Cloning devicehandle %?", self.ptr()));
 		DeviceHandle{box: self.box.clone()}
 	}
 }
