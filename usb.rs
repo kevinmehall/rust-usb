@@ -1,14 +1,16 @@
 use libusb::*;
 use std::unstable::intrinsics;
-use std::libc::{c_int, c_uint, c_void, size_t, uint8_t, uint16_t};
+use std::libc::{c_int, c_uint, c_void, size_t, uint8_t, uint16_t, malloc, free};
 use std::vec;
 use std::ptr::{to_unsafe_ptr, to_mut_unsafe_ptr};
 use std::result::Result;
 use std::iterator::IteratorUtil;
 use std::task;
-use std::comm::{PortOne, ChanOne, oneshot};
+use std::comm::{PortOne, ChanOne, SharedChan, stream, oneshot};
 use std::cast::transmute;
 use std::sys::size_of;
+use std::cast;
+use std::util::replace;
 
 
 use std::unstable::sync::UnsafeAtomicRcBox;
@@ -113,6 +115,14 @@ extern fn rust_usb_callback(transfer: *mut libusb_transfer) {
 		chan.send(());
 	}
 }
+
+extern fn rust_usb_stream_callback(transfer: *mut libusb_transfer) {
+	unsafe {
+		let chan: &SharedChan<*mut libusb_transfer> = transmute((*transfer).user_data);
+		chan.send(transfer);
+	}
+}
+	
 
 impl Clone for Context{
 	fn clone(&self) -> Context{
@@ -297,6 +307,68 @@ impl DeviceHandle {
 			self.write(0, LIBUSB_TRANSFER_TYPE_CONTROL, setup_buf+buf)
 		}
 	}
+
+	pub fn read_stream<'a>(&'a self, endpoint: u8,
+			transfer_type: libusb_transfer_type,
+			size: uint, mut num_transfers: uint, cb: &fn(Result<&[u8], libusb_transfer_status>) -> bool) {
+
+		let (port, chan) = stream();
+		let sc = SharedChan::new(chan);
+		let mut running = true;
+
+		struct TH {
+			t: *mut libusb_transfer,
+			c: SharedChan<*mut libusb_transfer>,
+		}
+
+		impl Drop for TH{
+			fn drop(&self) {
+				unsafe {
+					free((*self.t).buffer as *c_void);
+					libusb_free_transfer(self.t);
+				}
+			}
+		}
+
+		unsafe {
+			let transfers = do vec::from_fn(num_transfers) |i| { TH {
+				t: libusb_alloc_transfer(0),
+				c: sc.clone(),
+			}};
+
+			for transfers.iter().advance() |th| {
+				let mut t = th.t;
+				(*t).dev_handle = self.ptr();
+				(*t).endpoint = endpoint;
+				(*t).transfer_type = transfer_type as u8;
+				(*t).timeout = 0;
+				(*t).length = size as i32;
+				(*t).callback = rust_usb_stream_callback;
+				(*t).buffer = malloc(size as size_t) as *mut u8;
+				(*t).user_data = transmute(&th.c);
+				libusb_submit_transfer(t);
+			}
+
+			while (num_transfers > 0) {
+				let transfer: *mut libusb_transfer = port.recv();
+
+				if ((*transfer).status == LIBUSB_TRANSFER_COMPLETED) {
+					do vec::raw::buf_as_slice((*transfer).buffer as *u8, size) |b| {
+						running &= cb(Ok(b))
+					}
+				} else {
+					running &= cb(Err((*transfer).status))
+				}
+
+				if (running) {
+					let r = libusb_submit_transfer(transfer);
+					assert!(r == 0);
+				} else {
+					num_transfers -= 1;
+				}
+			}
+		}
+	}
 }
 
 unsafe fn fill_setup_buf(buf: &mut [u8], bmRequestType: u8,
@@ -319,4 +391,3 @@ impl Clone for DeviceHandle {
 		DeviceHandle{box: self.box.clone()}
 	}
 }
-

@@ -28,12 +28,16 @@ fn main() {
 
 					do spawn {
 						println(fmt!("1 Opened device %?", handle1.ptr()));
-						println(fmt!("Read %?", handle1.read(0x81, libusb::LIBUSB_TRANSFER_TYPE_BULK, 64)));
+						//println(fmt!("Read %?", handle1.read(0x81, libusb::LIBUSB_TRANSFER_TYPE_BULK, 64)));
 						println(fmt!("Write %?", handle1.write(0x02, libusb::LIBUSB_TRANSFER_TYPE_BULK, [1,2,3])));
 						println(fmt!("ctrl %?", handle1.ctrl_read(0xC0, 0x20, 0, 0, 64)));
 					}
 					do spawn {
 						println(fmt!("2 Opened device %?", handle2.ptr()));
+						do handle2.read_stream(0x81, libusb::LIBUSB_TRANSFER_TYPE_BULK, 64, 2) |buf| {
+							println(fmt!("Read %?", buf));
+							true
+						}
 					}
 				},
 				Err(code) => {
