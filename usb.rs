@@ -116,6 +116,20 @@ extern fn rust_usb_callback(transfer: *mut libusb_transfer) {
 	}
 }
 
+struct TH {
+	t: *mut libusb_transfer,
+	c: SharedChan<*mut libusb_transfer>,
+}
+
+impl Drop for TH{
+	fn drop(&self) {
+		unsafe {
+			free((*self.t).buffer as *c_void);
+			libusb_free_transfer(self.t);
+		}
+	}
+}
+
 extern fn rust_usb_stream_callback(transfer: *mut libusb_transfer) {
 	unsafe {
 		let chan: &SharedChan<*mut libusb_transfer> = transmute((*transfer).user_data);
@@ -308,45 +322,44 @@ impl DeviceHandle {
 		}
 	}
 
-	pub fn read_stream<'a>(&'a self, endpoint: u8,
+	priv unsafe fn stream_transfers(&self, endpoint: u8,
+			transfer_type: libusb_transfer_type, size: uint,
+			num_transfers: uint) -> (Port<*mut libusb_transfer>, ~[TH]) {
+		
+		let (port, chan) = stream::<*mut libusb_transfer>();
+		let sc = SharedChan::new(chan);
+
+		let transfers = do vec::from_fn(num_transfers) |i| { TH {
+			t: libusb_alloc_transfer(0),
+			c: sc.clone(),
+		}};
+
+		foreach th in transfers.iter() {
+			let mut t = th.t;
+			(*t).dev_handle = self.ptr();
+			(*t).endpoint = endpoint;
+			(*t).transfer_type = transfer_type as u8;
+			(*t).timeout = 0;
+			(*t).length = size as i32;
+			(*t).callback = rust_usb_stream_callback;
+			(*t).buffer = malloc(size as size_t) as *mut u8;
+			(*t).user_data = transmute(&th.c);
+		}
+
+		return (port, transfers);
+	}
+
+	pub fn read_stream(&self, endpoint: u8,
 			transfer_type: libusb_transfer_type,
 			size: uint, mut num_transfers: uint, cb: &fn(Result<&[u8], libusb_transfer_status>) -> bool) {
 
-		let (port, chan) = stream();
-		let sc = SharedChan::new(chan);
-		let mut running = true;
-
-		struct TH {
-			t: *mut libusb_transfer,
-			c: SharedChan<*mut libusb_transfer>,
-		}
-
-		impl Drop for TH{
-			fn drop(&self) {
-				unsafe {
-					free((*self.t).buffer as *c_void);
-					libusb_free_transfer(self.t);
-				}
-			}
-		}
-
 		unsafe {
-			let transfers = do vec::from_fn(num_transfers) |i| { TH {
-				t: libusb_alloc_transfer(0),
-				c: sc.clone(),
-			}};
+			let mut running = true;
+			let (port, transfers) = self.stream_transfers(
+				endpoint, transfer_type, size, num_transfers);
 
-			for transfers.iter().advance() |th| {
-				let mut t = th.t;
-				(*t).dev_handle = self.ptr();
-				(*t).endpoint = endpoint;
-				(*t).transfer_type = transfer_type as u8;
-				(*t).timeout = 0;
-				(*t).length = size as i32;
-				(*t).callback = rust_usb_stream_callback;
-				(*t).buffer = malloc(size as size_t) as *mut u8;
-				(*t).user_data = transmute(&th.c);
-				libusb_submit_transfer(t);
+			foreach th in transfers.iter() {
+				libusb_submit_transfer(th.t);
 			}
 
 			while (num_transfers > 0) {
@@ -357,7 +370,8 @@ impl DeviceHandle {
 						running &= cb(Ok(b))
 					}
 				} else {
-					running &= cb(Err((*transfer).status))
+					running = false;
+					running &= cb(Err((*transfer).status));
 				}
 
 				if (running) {
@@ -365,6 +379,50 @@ impl DeviceHandle {
 					assert!(r == 0);
 				} else {
 					num_transfers -= 1;
+				}
+			}
+		}
+	}
+
+	pub fn write_stream(&self, endpoint: u8,
+			transfer_type: libusb_transfer_type,
+			size: uint, num_transfers: uint, cb: &fn(Result<(&mut[u8]), libusb_transfer_status>) -> bool) {
+
+		unsafe {
+			let mut running = true;
+			let mut running_transfers = 0;
+			let (port, transfers) = self.stream_transfers(
+				endpoint, transfer_type, size, num_transfers);
+
+			foreach th in transfers.iter() {
+				do vec::raw::mut_buf_as_slice((*th.t).buffer, size) |b| {
+					running &= cb(Ok(b));
+				}
+				if running {
+					libusb_submit_transfer(th.t);
+					running_transfers += 1;
+				} else {
+					break;
+				}
+			}
+
+			while (running_transfers > 0) {
+				let transfer: *mut libusb_transfer = port.recv();
+
+				if ((*transfer).status == LIBUSB_TRANSFER_COMPLETED) {
+					do vec::raw::mut_buf_as_slice((*transfer).buffer, size) |b| {
+						running &= cb(Ok(b))
+					}
+				} else {
+					running = false;
+					running &= cb(Err((*transfer).status));
+				}
+
+				if (running) {
+					let r = libusb_submit_transfer(transfer);
+					assert!(r == 0);
+				} else {
+					running_transfers -= 1;
 				}
 			}
 		}

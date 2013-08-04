@@ -28,14 +28,30 @@ fn main() {
 
 					do spawn {
 						println(fmt!("1 Opened device %?", handle1.ptr()));
-						//println(fmt!("Read %?", handle1.read(0x81, libusb::LIBUSB_TRANSFER_TYPE_BULK, 64)));
-						println(fmt!("Write %?", handle1.write(0x02, libusb::LIBUSB_TRANSFER_TYPE_BULK, [1,2,3])));
 						println(fmt!("ctrl %?", handle1.ctrl_read(0xC0, 0x20, 0, 0, 64)));
+						println(fmt!("Write %?", handle1.write(0x02, libusb::LIBUSB_TRANSFER_TYPE_BULK, [1,2,3])));
+						do handle1.write_stream(0x02, libusb::LIBUSB_TRANSFER_TYPE_BULK, 640, 8) |r| {
+							match (r) {
+								Ok(buf) => {
+									printfln!("Write OK");
+									buf[0] = 5;
+								},
+								Err(code) => {
+									printfln!("Write error %?", code);
+								}
+							}
+							true
+						}
+
 					}
 					do spawn {
 						println(fmt!("2 Opened device %?", handle2.ptr()));
-						do handle2.read_stream(0x81, libusb::LIBUSB_TRANSFER_TYPE_BULK, 64, 2) |buf| {
-							println(fmt!("Read %?", buf));
+						println(fmt!("Read %?", handle2.read(0x81, libusb::LIBUSB_TRANSFER_TYPE_BULK, 64)));
+						do handle2.read_stream(0x81, libusb::LIBUSB_TRANSFER_TYPE_BULK, 640, 8) |r| {
+							match (r) {
+								Ok(buf) => printfln!("Read %?", buf.slice(0, 10)),
+								Err(code) => printfln!("Read error %?", code)
+							}
 							true
 						}
 					}
