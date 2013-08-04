@@ -1,17 +1,14 @@
 use libusb::*;
 use std::unstable::intrinsics;
-use std::libc::{c_int, c_uint, c_void, size_t, uint8_t, uint16_t, malloc, free};
+use std::libc::{c_int, c_void, size_t, malloc, free};
 use std::vec;
-use std::ptr::{to_unsafe_ptr, to_mut_unsafe_ptr};
+use std::ptr::{to_mut_unsafe_ptr};
 use std::result::Result;
 use std::iterator::IteratorUtil;
 use std::task;
 use std::comm::{PortOne, ChanOne, SharedChan, stream, oneshot};
 use std::cast::transmute;
 use std::sys::size_of;
-use std::cast;
-use std::util::replace;
-
 
 use std::unstable::sync::UnsafeAtomicRcBox;
 use std::unstable::atomics::{AtomicInt, SeqCst};
@@ -240,7 +237,7 @@ impl DeviceHandle {
 
 		let (port, chan): (PortOne<()>, ChanOne<()>) = oneshot();
 
-		let mut t = libusb_alloc_transfer(0);
+		let t = libusb_alloc_transfer(0);
 		(*t).dev_handle = self.ptr();
 		(*t).endpoint = endpoint;
 		(*t).transfer_type = transfer_type as u8;
@@ -329,21 +326,20 @@ impl DeviceHandle {
 		let (port, chan) = stream::<*mut libusb_transfer>();
 		let sc = SharedChan::new(chan);
 
-		let transfers = do vec::from_fn(num_transfers) |i| { TH {
+		let transfers = do vec::from_fn(num_transfers) |_| { TH {
 			t: libusb_alloc_transfer(0),
 			c: sc.clone(),
 		}};
 
 		foreach th in transfers.iter() {
-			let mut t = th.t;
-			(*t).dev_handle = self.ptr();
-			(*t).endpoint = endpoint;
-			(*t).transfer_type = transfer_type as u8;
-			(*t).timeout = 0;
-			(*t).length = size as i32;
-			(*t).callback = rust_usb_stream_callback;
-			(*t).buffer = malloc(size as size_t) as *mut u8;
-			(*t).user_data = transmute(&th.c);
+			(*th.t).dev_handle = self.ptr();
+			(*th.t).endpoint = endpoint;
+			(*th.t).transfer_type = transfer_type as u8;
+			(*th.t).timeout = 0;
+			(*th.t).length = size as i32;
+			(*th.t).callback = rust_usb_stream_callback;
+			(*th.t).buffer = malloc(size as size_t) as *mut u8;
+			(*th.t).user_data = transmute(&th.c);
 		}
 
 		return (port, transfers);
