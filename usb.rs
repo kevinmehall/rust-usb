@@ -248,7 +248,7 @@ impl DeviceHandle {
 			transfer_type: libusb_transfer_type,
 			size: uint
 			) -> Result<~[u8], libusb_transfer_status> {
-		let mut buf: ~[u8] = vec::from_elem(size, 0);
+		let mut buf: ~[u8] = vec::from_elem(size, 0u8);
 		unsafe {
 			let ptr = vec::raw::to_mut_ptr(buf);
 			let (status, actual_length) = self.submit_transfer_sync(
@@ -283,7 +283,7 @@ impl DeviceHandle {
 
 		let setup_length = size_of::<libusb_control_setup>();
 		let total_length = setup_length + length as uint;
-		let mut buf: ~[u8] = vec::from_elem(total_length, 0);
+		let mut buf: ~[u8] = vec::from_elem(total_length, 0u8);
 
 		unsafe{
 			let ptr = fill_setup_buf(buf, bmRequestType, bRequest, wValue, wIndex, length);
@@ -302,7 +302,7 @@ impl DeviceHandle {
 	pub fn ctrl_write(&self, bmRequestType: u8, bRequest: u8,
 		wValue:u16, wIndex: u16, buf: &[u8]) -> Result<(), libusb_transfer_status> {
 		unsafe {
-			let mut setup_buf = vec::from_elem(size_of::<libusb_control_setup>(), 0);
+			let mut setup_buf = vec::from_elem(size_of::<libusb_control_setup>(), 0u8);
 			fill_setup_buf(setup_buf, bmRequestType, bRequest, wValue, wIndex, buf.len());
 			self.write(0, LIBUSB_TRANSFER_TYPE_CONTROL, setup_buf+buf)
 		}

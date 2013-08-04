@@ -5,7 +5,7 @@ pub struct libusb_device;
 pub struct libusb_device_handle;
 
 #[link_args = "-lusb-1.0"]
-pub extern{
+extern{
 	pub fn libusb_init(ctx: *mut *mut libusb_context) -> c_int;
 	pub fn libusb_exit(ctx: *mut libusb_context);
 	pub fn libusb_set_debug(ctx: *mut libusb_context, level: c_int);
