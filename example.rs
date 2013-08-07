@@ -7,7 +7,7 @@ fn main() {
 	
 	let devices = c.listDevices();
 
-	foreach dev in devices.iter() {
+	for dev in devices.iter() {
 		let desc = dev.descriptor();
 		printfln!("Device %i.%i %04x:%04x",
 			dev.bus(),

@@ -331,7 +331,7 @@ impl DeviceHandle {
 			c: sc.clone(),
 		}};
 
-		foreach th in transfers.iter() {
+		for th in transfers.iter() {
 			(*th.t).dev_handle = self.ptr();
 			(*th.t).endpoint = endpoint;
 			(*th.t).transfer_type = transfer_type as u8;
@@ -354,7 +354,7 @@ impl DeviceHandle {
 			let (port, transfers) = self.stream_transfers(
 				endpoint, transfer_type, size, num_transfers);
 
-			foreach th in transfers.iter() {
+			for th in transfers.iter() {
 				libusb_submit_transfer(th.t);
 			}
 
@@ -390,7 +390,7 @@ impl DeviceHandle {
 			let (port, transfers) = self.stream_transfers(
 				endpoint, transfer_type, size, num_transfers);
 
-			foreach th in transfers.iter() {
+			for th in transfers.iter() {
 				do vec::raw::mut_buf_as_slice((*th.t).buffer, size) |b| {
 					running &= cb(Ok(b));
 				}
