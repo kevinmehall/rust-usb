@@ -4,7 +4,6 @@ use std::libc::{c_int, c_void, size_t, malloc, free};
 use std::vec;
 use std::ptr::{to_mut_unsafe_ptr};
 use std::result::Result;
-use std::iterator::IteratorUtil;
 use std::task;
 use std::comm::{PortOne, ChanOne, SharedChan, stream, oneshot};
 use std::cast::transmute;
@@ -65,7 +64,7 @@ impl Context {
 			let mut list: *mut *mut libusb_device = intrinsics::init();
 			let num_devices = libusb_get_device_list(self.ptr(), &mut list);
 			let r = vec::raw::mut_buf_as_slice(list, num_devices as uint, |l|{
-				l.iter().transform(|i| Device{dev: *i, ctx: (*self).clone()}).collect()
+				l.iter().map(|i| Device{dev: *i, ctx: (*self).clone()}).collect()
 			});
 
 			libusb_free_device_list(list, 0);
@@ -74,13 +73,13 @@ impl Context {
 	}
 
 	pub fn find_by_vid_pid(&self, vid: uint, pid: uint) -> Option<Device> {
-		self.listDevices().consume_iter().find_(|d| {
+		self.listDevices().move_iter().find(|d| {
 			let desc = d.descriptor();
 			desc.idVendor as uint == vid && desc.idProduct as uint == pid
 		})
 	}
 
-	priv fn device_opened(&self) {
+	fn device_opened(&self) {
 		let count = unsafe { &mut (*self.box.get()).open_device_count };
 		let old_count = count.fetch_add(1, SeqCst);
 
@@ -100,7 +99,7 @@ impl Context {
 		}
 	}
 
-	priv fn device_closed(&self) {
+	fn device_closed(&self) {
 		let count = unsafe { &mut (*self.box.get()).open_device_count };
 		count.fetch_sub(1, SeqCst);
 	}
@@ -319,7 +318,7 @@ impl DeviceHandle {
 		}
 	}
 
-	priv unsafe fn stream_transfers(&self, endpoint: u8,
+	unsafe fn stream_transfers(&self, endpoint: u8,
 			transfer_type: libusb_transfer_type, size: uint,
 			num_transfers: uint) -> (Port<*mut libusb_transfer>, ~[TH]) {
 		
