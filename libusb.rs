@@ -486,6 +486,8 @@ pub struct libusb_iso_packet_descriptor {
 	status: libusb_transfer_status,
 }
 
+type libusb_callback_fn = extern "C" fn(*mut libusb_transfer);
+
 /** \ingroup asyncio
  * The generic USB transfer structure. The user populates this structure and
  * then submits it in order to request a transfer. After the transfer has
@@ -531,7 +533,7 @@ pub struct libusb_transfer {
 
 	/** Callback function. This will be invoked when the transfer completes,
 	 * fails, or is cancelled. */
-	callback: *u8,
+	callback: libusb_callback_fn,
 
 	/** User context data to pass to the callback function. */
 	user_data: *mut c_void,

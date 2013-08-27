@@ -19,6 +19,8 @@ pub struct ContextData {
 }
 
 impl Drop for ContextData {
+	#[fixed_stack_segment]
+	#[inline(never)]
 	fn drop(&self) {
 		unsafe {
 			assert!(self.open_device_count.load(SeqCst) == 0);
@@ -33,6 +35,8 @@ pub struct Context {
 }
 
 impl Context {
+	#[fixed_stack_segment]
+	#[inline(never)]
 	pub fn new() -> Context {
 		unsafe{
 			let mut ctx: *mut libusb_context = intrinsics::init();
@@ -53,12 +57,16 @@ impl Context {
 		}
 	}
 
+	#[fixed_stack_segment]
+	#[inline(never)]
 	pub fn setDebug(&self, level: int) {
 		unsafe{
 			libusb_set_debug(self.ptr(), level as c_int);
 		}
 	}
 
+	#[fixed_stack_segment]
+	#[inline(never)]
 	pub fn listDevices(&self) -> ~[Device] {
 		unsafe{
 			let mut list: *mut *mut libusb_device = intrinsics::init();
@@ -84,9 +92,11 @@ impl Context {
 		let old_count = count.fetch_add(1, SeqCst);
 
 		if old_count == 0 {
-			let tbox = self.box.clone();
+			let box = self.box.clone();
 
-			do task::spawn_sched(task::SingleThreaded) {
+			#[fixed_stack_segment]
+			#[inline(never)]
+			fn threadfn(tbox: &UnsafeAtomicRcBox<ContextData>) {
 				unsafe {
 					let ctx = (*tbox.get()).ctx;
 					let count = &(*tbox.get()).open_device_count;
@@ -95,6 +105,10 @@ impl Context {
 						libusb_handle_events(ctx);
 					}
 				}
+			}
+
+			do task::spawn_sched(task::SingleThreaded) {
+				threadfn(&box);
 			}
 		}
 	}
@@ -118,6 +132,8 @@ struct TH {
 }
 
 impl Drop for TH{
+	#[fixed_stack_segment]
+	#[inline(never)]
 	fn drop(&self) {
 		unsafe {
 			free((*self.t).buffer as *c_void);
@@ -146,6 +162,8 @@ pub struct Device {
 }
 
 impl Device {
+	#[fixed_stack_segment]
+	#[inline(never)]
 	pub fn descriptor(&self) -> ~libusb_device_descriptor {
 		unsafe{
 			let mut d: ~libusb_device_descriptor = ~intrinsics::uninit();
@@ -154,18 +172,24 @@ impl Device {
 		}
 	}
 
+	#[fixed_stack_segment]
+	#[inline(never)]
 	pub fn bus(&self) -> int {
 		unsafe {
 			libusb_get_bus_number(self.dev) as int
 		}
 	}
 
+	#[fixed_stack_segment]
+	#[inline(never)]
 	pub fn address(&self) -> int {
 		unsafe {
 			libusb_get_device_address(self.dev) as int
 		}
 	}
 
+	#[fixed_stack_segment]
+	#[inline(never)]
 	pub fn open(&self) -> Result<DeviceHandle, int> {
 		unsafe {
 			let mut handle: *mut libusb_device_handle = intrinsics::uninit();
@@ -186,6 +210,8 @@ impl Device {
 }
 
 impl Drop for Device {
+	#[fixed_stack_segment]
+	#[inline(never)]
 	fn drop(&self) {
 		unsafe {
 			libusb_unref_device(self.dev);
@@ -195,6 +221,8 @@ impl Drop for Device {
 
 
 impl Clone for Device {
+	#[fixed_stack_segment]
+	#[inline(never)]
 	fn clone(&self) -> Device {
 		unsafe {
 			libusb_ref_device(self.dev);
@@ -209,6 +237,8 @@ struct DeviceHandleData{
 }
 
 impl Drop for DeviceHandleData {
+	#[fixed_stack_segment]
+	#[inline(never)]
 	fn drop(&self) {
 		unsafe {
 			self.ctx.device_closed();
@@ -228,6 +258,8 @@ impl DeviceHandle {
 		}
 	}
 
+	#[fixed_stack_segment]
+	#[inline(never)]
 	pub unsafe fn submit_transfer_sync(&self,
 		endpoint: u8,
 		transfer_type: libusb_transfer_type,
@@ -318,6 +350,8 @@ impl DeviceHandle {
 		}
 	}
 
+	#[fixed_stack_segment]
+	#[inline(never)]
 	unsafe fn stream_transfers(&self, endpoint: u8,
 			transfer_type: libusb_transfer_type, size: uint,
 			num_transfers: uint) -> (Port<*mut libusb_transfer>, ~[TH]) {
@@ -344,6 +378,8 @@ impl DeviceHandle {
 		return (port, transfers);
 	}
 
+	#[fixed_stack_segment]
+	#[inline(never)]
 	pub fn read_stream(&self, endpoint: u8,
 			transfer_type: libusb_transfer_type,
 			size: uint, mut num_transfers: uint, cb: &fn(Result<&[u8], libusb_transfer_status>) -> bool) {
@@ -379,6 +415,8 @@ impl DeviceHandle {
 		}
 	}
 
+	#[fixed_stack_segment]
+	#[inline(never)]
 	pub fn write_stream(&self, endpoint: u8,
 			transfer_type: libusb_transfer_type,
 			size: uint, num_transfers: uint, cb: &fn(Result<(&mut[u8]), libusb_transfer_status>) -> bool) {
