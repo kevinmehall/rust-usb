@@ -399,6 +399,7 @@ pub struct libusb_config_descriptor {
  * error code or libusb_strerror() to get an end-user suitable description of
  * an error code.
  */
+ #[deriving(ToStr)]
 pub enum libusb_error {
 	/** Success (no error) */
 	LIBUSB_SUCCESS = 0,
@@ -449,6 +450,7 @@ pub enum libusb_error {
 /** \ingroup asyncio
  * Transfer status codes */
 #[deriving(Eq)]
+#[deriving(ToStr)]
 pub enum libusb_transfer_status {
 	/** Transfer completed without error. Note that this does not indicate
 	 * that the entire amount of requested data was transferred. */
