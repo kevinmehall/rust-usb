@@ -1,4 +1,5 @@
 use std::libc::{c_int, c_uint, c_void, size_t, uint8_t, uint16_t};
+use std::cast;
 
 pub struct libusb_context;
 pub struct libusb_device;
@@ -473,6 +474,16 @@ pub enum libusb_transfer_status {
 	LIBUSB_TRANSFER_OVERFLOW,
 }
 
+impl libusb_transfer_status {
+	#[inline]
+	pub fn from_uint(s: c_uint) -> libusb_transfer_status {
+		// https://github.com/mozilla/rust/issues/3868
+		unsafe {
+			cast::transmute(s as uint)
+		}
+	}
+}
+
 /** \ingroup asyncio
  * Isochronous packet descriptor. */
 pub struct libusb_iso_packet_descriptor {
@@ -521,7 +532,7 @@ pub struct libusb_transfer {
 	 * if there were errors in the frames. Use the
 	 * \ref libusb_iso_packet_descriptor::status "status" field in each packet
 	 * to determine if errors occurred. */
-	status: libusb_transfer_status,
+	status: c_uint,
 
 	/** Length of the data buffer */
 	length: c_int,
@@ -547,6 +558,13 @@ pub struct libusb_transfer {
 
 	// /** Isochronous packet descriptors, for isochronous transfers only. */
 	//struct libusb_iso_packet_descriptor iso_packet_desc;
+}
+
+impl libusb_transfer {
+	#[inline]
+	pub fn get_status(&self) -> libusb_transfer_status {
+		libusb_transfer_status::from_uint(self.status)
+	}
 }
 
 /** Setup packet for control transfers. */

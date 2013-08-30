@@ -273,14 +273,14 @@ impl DeviceHandle {
 		(*t).endpoint = endpoint;
 		(*t).transfer_type = transfer_type as u8;
 		(*t).timeout = 0;
-		(*t).length = length as i32;
+		(*t).length = length as c_int;
 		(*t).callback = rust_usb_callback;
 		(*t).user_data = transmute(~chan);
 		(*t).buffer = buffer;
 
 		libusb_submit_transfer(t);
 		port.recv();
-		let r = ((*t).status, (*t).actual_length as uint);
+		let r = ((*t).get_status(), (*t).actual_length as uint);
 		libusb_free_transfer(t);
 		return r;
 	}
@@ -396,13 +396,13 @@ impl DeviceHandle {
 			while (num_transfers > 0) {
 				let transfer: *mut libusb_transfer = port.recv();
 
-				if ((*transfer).status == LIBUSB_TRANSFER_COMPLETED) {
+				if ((*transfer).get_status() == LIBUSB_TRANSFER_COMPLETED) {
 					do vec::raw::buf_as_slice((*transfer).buffer as *u8, size) |b| {
 						running &= cb(Ok(b))
 					}
 				} else {
 					running = false;
-					running &= cb(Err((*transfer).status));
+					running &= cb(Err((*transfer).get_status()));
 				}
 
 				if (running) {
@@ -442,13 +442,13 @@ impl DeviceHandle {
 			while (running_transfers > 0) {
 				let transfer: *mut libusb_transfer = port.recv();
 
-				if ((*transfer).status == LIBUSB_TRANSFER_COMPLETED) {
+				if ((*transfer).get_status() == LIBUSB_TRANSFER_COMPLETED) {
 					do vec::raw::mut_buf_as_slice((*transfer).buffer, size) |b| {
 						running &= cb(Ok(b))
 					}
 				} else {
 					running = false;
-					running &= cb(Err((*transfer).status));
+					running &= cb(Err((*transfer).get_status()));
 				}
 
 				if (running) {
