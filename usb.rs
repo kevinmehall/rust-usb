@@ -9,7 +9,7 @@ use std::comm::{PortOne, ChanOne, SharedChan, stream, oneshot};
 use std::cast::transmute;
 use std::sys::size_of;
 
-use std::unstable::sync::UnsafeAtomicRcBox;
+use std::unstable::sync::UnsafeArc;
 use std::unstable::atomics::{AtomicInt, SeqCst};
 
 
@@ -31,7 +31,7 @@ impl Drop for ContextData {
 }
 
 pub struct Context {
-	priv box: UnsafeAtomicRcBox<ContextData>
+	priv box: UnsafeArc<ContextData>
 }
 
 impl Context {
@@ -43,7 +43,7 @@ impl Context {
 			let r = libusb_init(&mut ctx);
 
 			Context{
-				box: UnsafeAtomicRcBox::new(ContextData{
+				box: UnsafeArc::new(ContextData{
 					ctx: ctx,
 					open_device_count: AtomicInt::new(0)
 				})
@@ -96,7 +96,7 @@ impl Context {
 
 			#[fixed_stack_segment]
 			#[inline(never)]
-			fn threadfn(tbox: &UnsafeAtomicRcBox<ContextData>) {
+			fn threadfn(tbox: &UnsafeArc<ContextData>) {
 				unsafe {
 					let ctx = (*tbox.get()).ctx;
 					let count = &(*tbox.get()).open_device_count;
@@ -197,7 +197,7 @@ impl Device {
 			if (r == 0){
 				self.ctx.device_opened();
 				Ok(DeviceHandle {
-					box: UnsafeAtomicRcBox::new(DeviceHandleData {
+					box: UnsafeArc::new(DeviceHandleData {
 						dev: handle,
 						ctx: self.ctx.clone()
 					})
@@ -248,7 +248,7 @@ impl Drop for DeviceHandleData {
 }
 
 pub struct DeviceHandle {
-	priv box: UnsafeAtomicRcBox<DeviceHandleData>
+	priv box: UnsafeArc<DeviceHandleData>
 }
 
 impl DeviceHandle {
