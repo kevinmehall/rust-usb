@@ -21,7 +21,7 @@ pub struct ContextData {
 impl Drop for ContextData {
 	#[fixed_stack_segment]
 	#[inline(never)]
-	fn drop(&self) {
+	fn drop(&mut self) {
 		unsafe {
 			assert!(self.open_device_count.load(SeqCst) == 0);
 			// TODO: make sure backend thread is dead if the last device just closed
@@ -134,7 +134,7 @@ struct TH {
 impl Drop for TH{
 	#[fixed_stack_segment]
 	#[inline(never)]
-	fn drop(&self) {
+	fn drop(&mut self) {
 		unsafe {
 			free((*self.t).buffer as *c_void);
 			libusb_free_transfer(self.t);
@@ -212,7 +212,7 @@ impl Device {
 impl Drop for Device {
 	#[fixed_stack_segment]
 	#[inline(never)]
-	fn drop(&self) {
+	fn drop(&mut self) {
 		unsafe {
 			libusb_unref_device(self.dev);
 		}
@@ -239,7 +239,7 @@ struct DeviceHandleData{
 impl Drop for DeviceHandleData {
 	#[fixed_stack_segment]
 	#[inline(never)]
-	fn drop(&self) {
+	fn drop(&mut self) {
 		unsafe {
 			self.ctx.device_closed();
 			libusb_close(self.dev);
