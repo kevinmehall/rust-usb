@@ -9,7 +9,7 @@ fn main() {
 
 	for dev in devices.iter() {
 		let desc = dev.descriptor();
-		printfln!("Device %i.%i %04x:%04x",
+		println!("Device {:i}.{:i} {:04x}:{:04x}",
 			dev.bus(),
 			dev.address(),
 			desc.idVendor as uint,
@@ -25,17 +25,17 @@ fn main() {
 					let handle2 = handle.clone();
 
 					do spawn {
-						printfln!("1 Opened device %?", handle1.ptr());
-						printfln!("ctrl %?", handle1.ctrl_read(0xC0, 0x20, 0, 0, 64));
-						printfln!("Write %?", handle1.write(0x02, libusb::LIBUSB_TRANSFER_TYPE_BULK, [1,2,3]));
+						println!("1 Opened device {}", handle1.ptr());
+						println!("ctrl {:?}", handle1.ctrl_read(0xC0, 0x20, 0, 0, 64));
+						println!("Write {:?}", handle1.write(0x02, libusb::LIBUSB_TRANSFER_TYPE_BULK, [1,2,3]));
 						do handle1.write_stream(0x02, libusb::LIBUSB_TRANSFER_TYPE_BULK, 640, 8) |r| {
 							match (r) {
 								Ok(buf) => {
-									printfln!("Write OK");
+									println("Write OK");
 									buf[0] = 5;
 								},
 								Err(code) => {
-									printfln!("Write error %?", code);
+									println!("Write error {:?}", code);
 								}
 							}
 							true
@@ -43,19 +43,19 @@ fn main() {
 
 					}
 					do spawn {
-						printfln!("2 Opened device %?", handle2.ptr());
-						printfln!("Read %?", handle2.read(0x81, libusb::LIBUSB_TRANSFER_TYPE_BULK, 64));
+						println!("2 Opened device {:?}", handle2.ptr());
+						println!("Read {:?}", handle2.read(0x81, libusb::LIBUSB_TRANSFER_TYPE_BULK, 64));
 						do handle2.read_stream(0x81, libusb::LIBUSB_TRANSFER_TYPE_BULK, 640, 8) |r| {
 							match (r) {
-								Ok(buf) => printfln!("Read %?", buf.slice(0, 10)),
-								Err(code) => printfln!("Read error %?", code)
+								Ok(buf) => println!("Read {:?}", buf.slice(0, 10)),
+								Err(code) => println!("Read error {:?}", code)
 							}
 							true
 						}
 					}
 				},
 				Err(code) => {
-					printfln!("Error opening device: %?", code);
+					println!("Error opening device: {:?}", code);
 				}
 			}
 		},
