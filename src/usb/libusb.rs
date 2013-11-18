@@ -1,5 +1,5 @@
 use std::libc::{c_int, c_uint, c_void, size_t, uint8_t, uint16_t};
-use std::cast;
+use std::num;
 
 pub struct libusb_context;
 pub struct libusb_device;
@@ -451,6 +451,7 @@ pub enum libusb_error {
  * Transfer status codes */
 #[deriving(Eq)]
 #[deriving(ToStr)]
+#[deriving(FromPrimitive)]
 pub enum libusb_transfer_status {
 	/** Transfer completed without error. Note that this does not indicate
 	 * that the entire amount of requested data was transferred. */
@@ -474,16 +475,6 @@ pub enum libusb_transfer_status {
 
 	/** Device sent more data than requested */
 	LIBUSB_TRANSFER_OVERFLOW,
-}
-
-impl libusb_transfer_status {
-	#[inline]
-	pub fn from_uint(s: c_uint) -> libusb_transfer_status {
-		// https://github.com/mozilla/rust/issues/3868
-		unsafe {
-			cast::transmute(s as uint)
-		}
-	}
 }
 
 /** \ingroup asyncio
@@ -565,7 +556,7 @@ pub struct libusb_transfer {
 impl libusb_transfer {
 	#[inline]
 	pub fn get_status(&self) -> libusb_transfer_status {
-		libusb_transfer_status::from_uint(self.status)
+		num::FromPrimitive::from_u32(self.status).unwrap()
 	}
 }
 

@@ -7,7 +7,7 @@ use std::result::Result;
 use std::task;
 use std::comm::{PortOne, ChanOne, SharedChan, stream, oneshot};
 use std::cast::transmute;
-use std::sys::size_of;
+use std::mem::size_of;
 
 use std::unstable::sync::UnsafeArc;
 use std::unstable::atomics::{AtomicInt, SeqCst};
