@@ -5,6 +5,7 @@
 #[ author = "Kevin Mehall" ];
 
 #[ crate_type = "lib" ];
+#[ feature(globs) ];
 
 pub use usb::*;
 
