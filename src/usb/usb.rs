@@ -359,10 +359,10 @@ impl DeviceHandle {
 		let (port, chan) = stream::<*mut libusb_transfer>();
 		let sc = SharedChan::new(chan);
 
-		let transfers = do vec::from_fn(num_transfers) |_| { TH {
+		let transfers = vec::from_fn(num_transfers, |_| { TH {
 			t: libusb_alloc_transfer(0),
 			c: sc.clone(),
-		}};
+		}});
 
 		for th in transfers.iter() {
 			(*th.t).dev_handle = self.ptr();
@@ -382,7 +382,7 @@ impl DeviceHandle {
 	#[inline(never)]
 	pub fn read_stream(&self, endpoint: u8,
 			transfer_type: libusb_transfer_type,
-			size: uint, mut num_transfers: uint, cb: &fn(Result<&[u8], libusb_transfer_status>) -> bool) {
+			size: uint, mut num_transfers: uint, cb: |Result<&[u8], libusb_transfer_status>| -> bool) {
 
 		unsafe {
 			let mut running = true;
@@ -397,9 +397,9 @@ impl DeviceHandle {
 				let transfer: *mut libusb_transfer = port.recv();
 
 				if ((*transfer).get_status() == LIBUSB_TRANSFER_COMPLETED) {
-					do vec::raw::buf_as_slice((*transfer).buffer as *u8, size) |b| {
+					vec::raw::buf_as_slice((*transfer).buffer as *u8, size, |b| {
 						running &= cb(Ok(b))
-					}
+					});
 				} else {
 					running = false;
 					running &= cb(Err((*transfer).get_status()));
@@ -419,7 +419,7 @@ impl DeviceHandle {
 	#[inline(never)]
 	pub fn write_stream(&self, endpoint: u8,
 			transfer_type: libusb_transfer_type,
-			size: uint, num_transfers: uint, cb: &fn(Result<(&mut[u8]), libusb_transfer_status>) -> bool) {
+			size: uint, num_transfers: uint, cb: |Result<(&mut[u8]), libusb_transfer_status>| -> bool) {
 
 		unsafe {
 			let mut running = true;
@@ -428,9 +428,9 @@ impl DeviceHandle {
 				endpoint, transfer_type, size, num_transfers);
 
 			for th in transfers.iter() {
-				do vec::raw::mut_buf_as_slice((*th.t).buffer, size) |b| {
+				vec::raw::mut_buf_as_slice((*th.t).buffer, size, |b| {
 					running &= cb(Ok(b));
-				}
+				});
 				if running {
 					libusb_submit_transfer(th.t);
 					running_transfers += 1;
@@ -443,9 +443,9 @@ impl DeviceHandle {
 				let transfer: *mut libusb_transfer = port.recv();
 
 				if ((*transfer).get_status() == LIBUSB_TRANSFER_COMPLETED) {
-					do vec::raw::mut_buf_as_slice((*transfer).buffer, size) |b| {
+					vec::raw::mut_buf_as_slice((*transfer).buffer, size, |b| {
 						running &= cb(Ok(b))
-					}
+					});
 				} else {
 					running = false;
 					running &= cb(Err((*transfer).get_status()));
