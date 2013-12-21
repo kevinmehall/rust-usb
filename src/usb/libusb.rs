@@ -5,7 +5,8 @@ pub struct libusb_context;
 pub struct libusb_device;
 pub struct libusb_device_handle;
 
-#[link_args = "-lusb-1.0"]
+#[link (name="usb-1.0")]
+
 extern{
 	pub fn libusb_init(ctx: *mut *mut libusb_context) -> c_int;
 	pub fn libusb_exit(ctx: *mut libusb_context);
