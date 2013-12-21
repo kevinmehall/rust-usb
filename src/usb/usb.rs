@@ -5,7 +5,7 @@ use std::vec;
 use std::ptr::{to_mut_unsafe_ptr};
 use std::result::Result;
 use std::task;
-use std::comm::{PortOne, ChanOne, SharedChan, stream, oneshot};
+use std::comm::{Port, Chan, SharedChan};
 use std::cast::transmute;
 use std::mem::size_of;
 
@@ -19,8 +19,6 @@ pub struct ContextData {
 }
 
 impl Drop for ContextData {
-	#[fixed_stack_segment]
-	#[inline(never)]
 	fn drop(&mut self) {
 		unsafe {
 			assert!(self.open_device_count.load(SeqCst) == 0);
@@ -31,19 +29,17 @@ impl Drop for ContextData {
 }
 
 pub struct Context {
-	priv box: UnsafeArc<ContextData>
+	priv bx: UnsafeArc<ContextData>
 }
 
 impl Context {
-	#[fixed_stack_segment]
-	#[inline(never)]
 	pub fn new() -> Context {
 		unsafe{
 			let mut ctx: *mut libusb_context = intrinsics::init();
 			let r = libusb_init(&mut ctx);
 
 			Context{
-				box: UnsafeArc::new(ContextData{
+				bx: UnsafeArc::new(ContextData{
 					ctx: ctx,
 					open_device_count: AtomicInt::new(0)
 				})
@@ -53,20 +49,16 @@ impl Context {
 
 	pub fn ptr(&self) -> *mut libusb_context {
 		unsafe{
-			(*self.box.get()).ctx
+			(*self.bx.get()).ctx
 		}
 	}
 
-	#[fixed_stack_segment]
-	#[inline(never)]
 	pub fn setDebug(&self, level: int) {
 		unsafe{
 			libusb_set_debug(self.ptr(), level as c_int);
 		}
 	}
 
-	#[fixed_stack_segment]
-	#[inline(never)]
 	pub fn listDevices(&self) -> ~[Device] {
 		unsafe{
 			let mut list: *mut *mut libusb_device = intrinsics::init();
@@ -88,18 +80,16 @@ impl Context {
 	}
 
 	fn device_opened(&self) {
-		let count = unsafe { &mut (*self.box.get()).open_device_count };
+		let count = unsafe { &mut (*self.bx.get()).open_device_count };
 		let old_count = count.fetch_add(1, SeqCst);
 
 		if old_count == 0 {
-			let box = self.box.clone();
+			let bx = self.bx.clone();
 
-			#[fixed_stack_segment]
-			#[inline(never)]
-			fn threadfn(tbox: &UnsafeArc<ContextData>) {
+			fn threadfn(tbx: &UnsafeArc<ContextData>) {
 				unsafe {
-					let ctx = (*tbox.get()).ctx;
-					let count = &(*tbox.get()).open_device_count;
+					let ctx = (*tbx.get()).ctx;
+					let count = &(*tbx.get()).open_device_count;
 
 					while (count.load(SeqCst) > 0) {
 						libusb_handle_events(ctx);
@@ -108,20 +98,20 @@ impl Context {
 			}
 
 			do task::spawn_sched(task::SingleThreaded) {
-				threadfn(&box);
+				threadfn(&bx);
 			}
 		}
 	}
 
 	fn device_closed(&self) {
-		let count = unsafe { &mut (*self.box.get()).open_device_count };
+		let count = unsafe { &mut (*self.bx.get()).open_device_count };
 		count.fetch_sub(1, SeqCst);
 	}
 }
 
 extern fn rust_usb_callback(transfer: *mut libusb_transfer) {
 	unsafe {
-		let chan: ~ChanOne<()> = transmute((*transfer).user_data);
+		let chan: ~Chan<()> = transmute((*transfer).user_data);
 		chan.send(());
 	}
 }
@@ -132,8 +122,6 @@ struct TH {
 }
 
 impl Drop for TH{
-	#[fixed_stack_segment]
-	#[inline(never)]
 	fn drop(&mut self) {
 		unsafe {
 			free((*self.t).buffer as *c_void);
@@ -152,7 +140,7 @@ extern fn rust_usb_stream_callback(transfer: *mut libusb_transfer) {
 
 impl Clone for Context{
 	fn clone(&self) -> Context{
-		Context{box: self.box.clone()}
+		Context{bx: self.bx.clone()}
 	}
 }
 
@@ -162,8 +150,6 @@ pub struct Device {
 }
 
 impl Device {
-	#[fixed_stack_segment]
-	#[inline(never)]
 	pub fn descriptor(&self) -> ~libusb_device_descriptor {
 		unsafe{
 			let mut d: ~libusb_device_descriptor = ~intrinsics::uninit();
@@ -172,24 +158,18 @@ impl Device {
 		}
 	}
 
-	#[fixed_stack_segment]
-	#[inline(never)]
 	pub fn bus(&self) -> int {
 		unsafe {
 			libusb_get_bus_number(self.dev) as int
 		}
 	}
 
-	#[fixed_stack_segment]
-	#[inline(never)]
 	pub fn address(&self) -> int {
 		unsafe {
 			libusb_get_device_address(self.dev) as int
 		}
 	}
 
-	#[fixed_stack_segment]
-	#[inline(never)]
 	pub fn open(&self) -> Result<DeviceHandle, int> {
 		unsafe {
 			let mut handle: *mut libusb_device_handle = intrinsics::uninit();
@@ -197,7 +177,7 @@ impl Device {
 			if (r == 0){
 				self.ctx.device_opened();
 				Ok(DeviceHandle {
-					box: UnsafeArc::new(DeviceHandleData {
+					bx: UnsafeArc::new(DeviceHandleData {
 						dev: handle,
 						ctx: self.ctx.clone()
 					})
@@ -210,8 +190,6 @@ impl Device {
 }
 
 impl Drop for Device {
-	#[fixed_stack_segment]
-	#[inline(never)]
 	fn drop(&mut self) {
 		unsafe {
 			libusb_unref_device(self.dev);
@@ -221,8 +199,6 @@ impl Drop for Device {
 
 
 impl Clone for Device {
-	#[fixed_stack_segment]
-	#[inline(never)]
 	fn clone(&self) -> Device {
 		unsafe {
 			libusb_ref_device(self.dev);
@@ -237,8 +213,6 @@ struct DeviceHandleData{
 }
 
 impl Drop for DeviceHandleData {
-	#[fixed_stack_segment]
-	#[inline(never)]
 	fn drop(&mut self) {
 		unsafe {
 			self.ctx.device_closed();
@@ -248,25 +222,30 @@ impl Drop for DeviceHandleData {
 }
 
 pub struct DeviceHandle {
-	priv box: UnsafeArc<DeviceHandleData>
+	priv bx: UnsafeArc<DeviceHandleData>
 }
 
 impl DeviceHandle {
 	pub fn ptr(&self) -> *mut libusb_device_handle {
 		unsafe {
-			(*self.box.get()).dev
+			(*self.bx.get()).dev
 		}
 	}
 
-	#[fixed_stack_segment]
-	#[inline(never)]
+	pub fn claim_interface(&self,
+		iface_num: uint) {
+		unsafe {
+		libusb_claim_interface(self.ptr(), iface_num as c_int);
+		}
+	}
+
 	pub unsafe fn submit_transfer_sync(&self,
 		endpoint: u8,
 		transfer_type: libusb_transfer_type,
 		length: uint,
 		buffer: *mut u8) -> (libusb_transfer_status, uint) {
 
-		let (port, chan): (PortOne<()>, ChanOne<()>) = oneshot();
+		let (port, chan): (Port<()>, Chan<()>) = Chan::new();
 
 		let t = libusb_alloc_transfer(0);
 		(*t).dev_handle = self.ptr();
@@ -292,7 +271,7 @@ impl DeviceHandle {
 			) -> Result<~[u8], libusb_transfer_status> {
 		let mut buf: ~[u8] = vec::from_elem(size, 0u8);
 		unsafe {
-			let ptr = vec::raw::to_mut_ptr(buf);
+			let ptr = buf.as_mut_ptr();
 			let (status, actual_length) = self.submit_transfer_sync(
 				endpoint, transfer_type, size, ptr);
 
@@ -307,7 +286,7 @@ impl DeviceHandle {
 
 	pub fn write(&self, endpoint: u8, transfer_type: libusb_transfer_type, buf: &[u8]) -> Result<(), libusb_transfer_status> {
 		unsafe {
-			let ptr = vec::raw::to_ptr(buf) as *mut u8;
+			let ptr = buf.as_ptr() as *mut u8;
 
 			let (status, _) = self.submit_transfer_sync(
 				endpoint, transfer_type, buf.len(), ptr);
@@ -350,18 +329,15 @@ impl DeviceHandle {
 		}
 	}
 
-	#[fixed_stack_segment]
-	#[inline(never)]
 	unsafe fn stream_transfers(&self, endpoint: u8,
 			transfer_type: libusb_transfer_type, size: uint,
 			num_transfers: uint) -> (Port<*mut libusb_transfer>, ~[TH]) {
 		
-		let (port, chan) = stream::<*mut libusb_transfer>();
-		let sc = SharedChan::new(chan);
+		let (port, chan) = SharedChan::new();
 
 		let transfers = vec::from_fn(num_transfers, |_| { TH {
 			t: libusb_alloc_transfer(0),
-			c: sc.clone(),
+			c: chan.clone(),
 		}});
 
 		for th in transfers.iter() {
@@ -378,8 +354,6 @@ impl DeviceHandle {
 		return (port, transfers);
 	}
 
-	#[fixed_stack_segment]
-	#[inline(never)]
 	pub fn read_stream(&self, endpoint: u8,
 			transfer_type: libusb_transfer_type,
 			size: uint, mut num_transfers: uint, cb: |Result<&[u8], libusb_transfer_status>| -> bool) {
@@ -415,8 +389,6 @@ impl DeviceHandle {
 		}
 	}
 
-	#[fixed_stack_segment]
-	#[inline(never)]
 	pub fn write_stream(&self, endpoint: u8,
 			transfer_type: libusb_transfer_type,
 			size: uint, num_transfers: uint, cb: |Result<(&mut[u8]), libusb_transfer_status>| -> bool) {
@@ -464,7 +436,7 @@ impl DeviceHandle {
 
 unsafe fn fill_setup_buf(buf: &mut [u8], bmRequestType: u8,
 	bRequest: u8, wValue:u16, wIndex: u16, length: uint) -> *mut u8 {
-	let ptr = vec::raw::to_mut_ptr(buf);
+	let ptr = buf.as_mut_ptr();
 	let setup = ptr as *mut libusb_control_setup;
 
 	// TODO: these are always little-endian
@@ -479,6 +451,6 @@ unsafe fn fill_setup_buf(buf: &mut [u8], bmRequestType: u8,
 
 impl Clone for DeviceHandle {
 	fn clone(&self) -> DeviceHandle {
-		DeviceHandle{box: self.box.clone()}
+		DeviceHandle{bx: self.bx.clone()}
 	}
 }
