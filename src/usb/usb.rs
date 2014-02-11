@@ -1,17 +1,22 @@
+#[feature(globs)];
+
+extern mod native;
+extern mod libusb;
+
 use libusb::*;
 use std::unstable::intrinsics;
 use std::libc::{c_int, c_void, size_t, malloc, free};
 use std::vec;
 use std::ptr::{to_mut_unsafe_ptr};
 use std::result::Result;
-use std::task;
 use std::comm::{Port, Chan, SharedChan};
 use std::cast::transmute;
 use std::mem::size_of;
 
-use std::unstable::sync::UnsafeArc;
-use std::unstable::atomics::{AtomicInt, SeqCst};
+use std::sync::arc::UnsafeArc;
+use std::sync::atomics::{AtomicInt, SeqCst};
 
+use native::task;
 
 pub struct ContextData {
 	priv ctx: *mut libusb_context,
@@ -97,7 +102,7 @@ impl Context {
 				}
 			}
 
-			do task::spawn_sched(task::SingleThreaded) {
+			do task::spawn {
 				threadfn(&bx);
 			}
 		}
