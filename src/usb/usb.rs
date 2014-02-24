@@ -4,10 +4,9 @@ extern crate native;
 extern crate libusb;
 
 use libusb::*;
-use std::unstable::intrinsics;
+use std::intrinsics;
 use std::libc::{c_int, c_void, size_t, malloc, free};
 use std::vec;
-//use std::ptr::{to_mut_unsafe_ptr};
 use std::result::Result;
 use std::comm::{Port, Chan};
 use std::cast::transmute;
@@ -155,9 +154,9 @@ pub struct Device {
 impl Device {
 	pub fn descriptor(&self) -> ~libusb_device_descriptor {
 		unsafe{
-			let mut d: libusb_device_descriptor = intrinsics::uninit();
-			libusb_get_device_descriptor(self.dev, transmute(&d));
-			~d
+			let mut d: ~libusb_device_descriptor = ~intrinsics::uninit();
+			libusb_get_device_descriptor(self.dev, &mut *d as *mut libusb_device_descriptor);
+			d
 		}
 	}
 
