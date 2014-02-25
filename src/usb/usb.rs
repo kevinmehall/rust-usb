@@ -1,21 +1,25 @@
+#[feature(globs)];
+
+extern crate native;
+extern crate libusb;
+
 use libusb::*;
-use std::unstable::intrinsics;
+use std::intrinsics;
 use std::libc::{c_int, c_void, size_t, malloc, free};
 use std::vec;
-use std::ptr::{to_mut_unsafe_ptr};
 use std::result::Result;
-use std::task;
-use std::comm::{Port, Chan, SharedChan};
+use std::comm::{Port, Chan};
 use std::cast::transmute;
 use std::mem::size_of;
 
-use std::unstable::sync::UnsafeArc;
-use std::unstable::atomics::{AtomicInt, SeqCst};
+use std::sync::arc::UnsafeArc;
+use std::sync::atomics::{AtomicInt, SeqCst};
 
+use native::task;
 
 pub struct ContextData {
-	priv ctx: *mut libusb_context,
-	priv open_device_count: AtomicInt
+	ctx: *mut libusb_context,
+	open_device_count: AtomicInt
 }
 
 impl Drop for ContextData {
@@ -29,7 +33,7 @@ impl Drop for ContextData {
 }
 
 pub struct Context {
-	priv bx: UnsafeArc<ContextData>
+	bx: UnsafeArc<ContextData>
 }
 
 impl Context {
@@ -97,9 +101,7 @@ impl Context {
 				}
 			}
 
-			do task::spawn_sched(task::SingleThreaded) {
-				threadfn(&bx);
-			}
+			task::spawn(proc() {threadfn(&bx);});
 		}
 	}
 
@@ -118,13 +120,13 @@ extern fn rust_usb_callback(transfer: *mut libusb_transfer) {
 
 struct TH {
 	t: *mut libusb_transfer,
-	c: SharedChan<*mut libusb_transfer>,
+	c: Chan<*mut libusb_transfer>,
 }
 
 impl Drop for TH{
 	fn drop(&mut self) {
 		unsafe {
-			free((*self.t).buffer as *c_void);
+			free((*self.t).buffer as *mut c_void);
 			libusb_free_transfer(self.t);
 		}
 	}
@@ -132,7 +134,7 @@ impl Drop for TH{
 
 extern fn rust_usb_stream_callback(transfer: *mut libusb_transfer) {
 	unsafe {
-		let chan: &SharedChan<*mut libusb_transfer> = transmute((*transfer).user_data);
+		let chan: &Chan<*mut libusb_transfer> = transmute((*transfer).user_data);
 		chan.send(transfer);
 	}
 }
@@ -145,7 +147,7 @@ impl Clone for Context{
 }
 
 pub struct Device {
-	priv dev: *mut libusb_device,
+	dev: *mut libusb_device,
 	ctx: Context
 }
 
@@ -153,7 +155,7 @@ impl Device {
 	pub fn descriptor(&self) -> ~libusb_device_descriptor {
 		unsafe{
 			let mut d: ~libusb_device_descriptor = ~intrinsics::uninit();
-			libusb_get_device_descriptor(self.dev, to_mut_unsafe_ptr(d));
+			libusb_get_device_descriptor(self.dev, &mut *d as *mut libusb_device_descriptor);
 			d
 		}
 	}
@@ -208,8 +210,8 @@ impl Clone for Device {
 }
 
 struct DeviceHandleData{
-	priv dev: *mut libusb_device_handle,
-	priv ctx: Context
+	dev: *mut libusb_device_handle,
+	ctx: Context
 }
 
 impl Drop for DeviceHandleData {
@@ -222,7 +224,7 @@ impl Drop for DeviceHandleData {
 }
 
 pub struct DeviceHandle {
-	priv bx: UnsafeArc<DeviceHandleData>
+	bx: UnsafeArc<DeviceHandleData>
 }
 
 impl DeviceHandle {
@@ -333,7 +335,7 @@ impl DeviceHandle {
 			transfer_type: libusb_transfer_type, size: uint,
 			num_transfers: uint) -> (Port<*mut libusb_transfer>, ~[TH]) {
 		
-		let (port, chan) = SharedChan::new();
+		let (port, chan) = Chan::new();
 
 		let transfers = vec::from_fn(num_transfers, |_| { TH {
 			t: libusb_alloc_transfer(0),

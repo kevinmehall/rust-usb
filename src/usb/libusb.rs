@@ -1,5 +1,6 @@
 use std::libc::{c_int, c_uint, c_void, size_t, uint8_t, uint16_t};
 use std::num;
+use std::fmt::Show;
 
 pub struct libusb_context;
 pub struct libusb_device;
@@ -400,7 +401,7 @@ pub struct libusb_config_descriptor {
  * error code or libusb_strerror() to get an end-user suitable description of
  * an error code.
  */
- #[deriving(ToStr)]
+ #[deriving(Show)]
 pub enum libusb_error {
 	/** Success (no error) */
 	LIBUSB_SUCCESS = 0,
@@ -451,7 +452,7 @@ pub enum libusb_error {
 /** \ingroup asyncio
  * Transfer status codes */
 #[deriving(Eq)]
-#[deriving(ToStr)]
+#[deriving(Show)]
 #[deriving(FromPrimitive)]
 pub enum libusb_transfer_status {
 	/** Transfer completed without error. Note that this does not indicate
