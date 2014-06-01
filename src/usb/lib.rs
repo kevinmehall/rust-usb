@@ -4,9 +4,9 @@
 
 #[ crate_type = "lib" ];
 #[ feature(globs) ];
-extern mod native;
+extern crate native;
 
 pub use usb::*;
 
-pub mod libusb;
-pub mod usb;
+pub crate libusb;
+pub crate usb;
