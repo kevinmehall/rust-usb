@@ -452,9 +452,7 @@ pub enum libusb_error {
 
 /** \ingroup asyncio
  * Transfer status codes */
-#[deriving(Eq)]
-#[deriving(Show)]
-#[deriving(FromPrimitive)]
+#[deriving(FromPrimitive,Show,PartialEq)]
 pub enum libusb_transfer_status {
 	/** Transfer completed without error. Note that this does not indicate
 	 * that the entire amount of requested data was transferred. */

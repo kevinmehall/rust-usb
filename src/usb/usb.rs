@@ -3,6 +3,7 @@ extern crate libc;
 extern crate native;
 extern crate libusb;
 extern crate core;
+extern crate sync;
 
 use libusb::*;
 use libc::{c_int, c_void, size_t, malloc, free};
@@ -13,11 +14,13 @@ use std::comm::{Receiver, Sender};
 use core::mem::transmute;
 use std::mem::size_of;
 use std::vec::Vec;
+use std::ty::Unsafe;
 
-use std::sync::arc::UnsafeArc;
-use std::sync::atomics::{AtomicInt, SeqCst};
-
+use sync::Arc;
+use std::sync::atomics::{Ordering, SeqCst,AtomicInt};
 use native::task;
+
+
 
 pub struct ContextData {
 	ctx: *mut libusb_context,
@@ -35,7 +38,7 @@ impl Drop for ContextData {
 }
 
 pub struct Context {
-	bx: UnsafeArc<ContextData>
+	bx: Arc<Unsafe<ContextData>>
 }
 
 impl Context {
@@ -45,10 +48,10 @@ impl Context {
 			let r = libusb_init(&mut ctx);
 
 			Context{
-				bx: UnsafeArc::new(ContextData{
+				bx: Arc::new(Unsafe::new(ContextData{
 					ctx: ctx,
 					open_device_count: AtomicInt::new(0)
-				})
+				}))
 			}
 		}
 	}
@@ -92,7 +95,7 @@ impl Context {
 		if old_count == 0 {
 			let bx = self.bx.clone();
 
-			fn threadfn(tbx: &UnsafeArc<ContextData>) {
+			fn threadfn(tbx: &Arc<Unsafe<ContextData>>) {
 				unsafe {
 					let ctx = (*tbx.get()).ctx;
 					let count = &(*tbx.get()).open_device_count;
@@ -181,10 +184,10 @@ impl Device {
 			if (r == 0){
 				self.ctx.device_opened();
 				Ok(DeviceHandle {
-					bx: UnsafeArc::new(DeviceHandleData {
+					bx: Arc::new(Unsafe::new(DeviceHandleData {
 						dev: handle,
 						ctx: self.ctx.clone()
-					})
+					}))
 				})
 			}else{
 				Err(r as int)
@@ -226,7 +229,7 @@ impl Drop for DeviceHandleData {
 }
 
 pub struct DeviceHandle {
-	bx: UnsafeArc<DeviceHandleData>
+	bx: Arc<Unsafe<DeviceHandleData>>
 }
 
 impl DeviceHandle {
