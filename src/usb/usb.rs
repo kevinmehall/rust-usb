@@ -1,4 +1,4 @@
-#[feature(globs)];
+#![feature(globs)];
 extern crate libc;
 extern crate native;
 extern crate libusb;
@@ -181,7 +181,7 @@ impl Device {
 		unsafe {
 			let mut handle: *mut libusb_device_handle = intrinsics::uninit();
 			let r = libusb_open(self.dev, &mut handle);
-			if (r == 0){
+			if r == 0 {
 				self.ctx.device_opened();
 				Ok(DeviceHandle {
 					bx: Arc::new(Unsafe::new(DeviceHandleData {
@@ -378,7 +378,7 @@ impl DeviceHandle {
 			while (num_transfers > 0) {
 				let transfer: *mut libusb_transfer = port.recv();
 
-				if ((*transfer).get_status() == LIBUSB_TRANSFER_COMPLETED) {
+				if (*transfer).get_status() == LIBUSB_TRANSFER_COMPLETED {
 					slice::raw::buf_as_slice((*transfer).buffer as *u8, size, |b| {
 						running &= cb(Ok(b))
 					});
@@ -387,7 +387,7 @@ impl DeviceHandle {
 					running &= cb(Err((*transfer).get_status()));
 				}
 
-				if (running) {
+				if running {
 					let r = libusb_submit_transfer(transfer);
 					assert!(r == 0);
 				} else {
@@ -422,7 +422,7 @@ impl DeviceHandle {
 			while (running_transfers > 0) {
 				let transfer: *mut libusb_transfer = port.recv();
 
-				if ((*transfer).get_status() == LIBUSB_TRANSFER_COMPLETED) {
+				if (*transfer).get_status() == LIBUSB_TRANSFER_COMPLETED {
 					slice::raw::mut_buf_as_slice((*transfer).buffer, size, |b| {
 						running &= cb(Ok(b))
 					});
@@ -431,7 +431,7 @@ impl DeviceHandle {
 					running &= cb(Err((*transfer).get_status()));
 				}
 
-				if (running) {
+				if running {
 					let r = libusb_submit_transfer(transfer);
 					assert!(r == 0);
 				} else {
