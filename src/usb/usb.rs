@@ -1,7 +1,5 @@
-#![feature(globs)];
 extern crate libc;
 extern crate native;
-extern crate libusb;
 extern crate core;
 extern crate sync;
 
@@ -11,7 +9,7 @@ use std::intrinsics;
 use std::slice;
 use std::result::Result;
 use std::comm::{Receiver, Sender};
-use core::mem::transmute;
+use std::mem::transmute;
 use std::mem::size_of;
 use std::vec::Vec;
 use std::ty::Unsafe;
@@ -143,7 +141,7 @@ extern fn rust_usb_stream_callback(transfer: *mut libusb_transfer) {
 		chan.send(transfer);
 	}
 }
-	
+
 
 impl Clone for Context{
 	fn clone(&self) -> Context{
@@ -307,7 +305,7 @@ impl DeviceHandle {
 	}
 
 	pub fn ctrl_read(&self, bmRequestType: u8, bRequest: u8,
-		wValue:u16, wIndex: u16, length: uint) -> Result<~[u8], libusb_transfer_status> {
+		wValue:u16, wIndex: u16, length: uint) -> Result<Vec<u8>, libusb_transfer_status> {
 
 		let setup_length = size_of::<libusb_control_setup>();
 		let total_length = setup_length + length as uint;
@@ -340,7 +338,7 @@ impl DeviceHandle {
 	unsafe fn stream_transfers(&self, endpoint: u8,
 			transfer_type: libusb_transfer_type, size: uint,
 			num_transfers: uint) -> (Receiver<*mut libusb_transfer>, Vec<TH>) {
-		
+
 		let (chan, port) = channel();
 
 		let transfers = Vec::from_fn(num_transfers, |_| { TH {
@@ -379,7 +377,7 @@ impl DeviceHandle {
 				let transfer: *mut libusb_transfer = port.recv();
 
 				if (*transfer).get_status() == LIBUSB_TRANSFER_COMPLETED {
-					slice::raw::buf_as_slice((*transfer).buffer as *u8, size, |b| {
+					slice::raw::buf_as_slice((*transfer).buffer as *const u8, size, |b| {
 						running &= cb(Ok(b))
 					});
 				} else {
@@ -403,7 +401,7 @@ impl DeviceHandle {
 
 		unsafe {
 			let mut running = true;
-			let mut running_transfers = 0;
+			let mut running_transfers = 0u;
 			let (port, transfers) = self.stream_transfers(
 				endpoint, transfer_type, size, num_transfers);
 
