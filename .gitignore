@@ -1,4 +1,1 @@
-.rust
-build
-lib
-bin
+target

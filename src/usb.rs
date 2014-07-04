@@ -1,3 +1,6 @@
+#![ crate_type = "lib" ]
+#![ feature(globs) ]
+
 extern crate libc;
 extern crate native;
 extern crate core;
@@ -18,7 +21,7 @@ use sync::Arc;
 use std::sync::atomics::{Ordering, SeqCst,AtomicInt};
 use native::task;
 
-
+pub mod libusb;
 
 pub struct ContextData {
 	ctx: *mut libusb_context,

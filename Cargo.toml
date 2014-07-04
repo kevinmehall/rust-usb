@@ -1,0 +1,9 @@
+[package]
+
+name = "usb"
+version = "0.1.0"
+authors = [ "km@kevinmehall.net", "it.daniher@gmail.com" ]
+
+[[lib]]
+
+name = "usb"
