@@ -1,11 +1,15 @@
-#![allow(non_camel_case_types)]
+#![allow(bad_style)]
 
 use libc::{c_int, c_uint, c_void, size_t, uint8_t, uint16_t};
 use std::num;
-use std::fmt::Show;
 
+#[repr(C)]
 pub struct libusb_context;
+
+#[repr(C)]
 pub struct libusb_device;
+
+#[repr(C)]
 pub struct libusb_device_handle;
 
 #[link (name="usb-1.0")]
@@ -59,6 +63,7 @@ extern{
 
 /**
  * Device and/or Interface Class codes */
+#[repr(C)]
 pub enum libusb_class_code {
 	/** In the context of a \ref libusb_device_descriptor "device descriptor",
 	 * this bDeviceClass value indicates that each interface specifies its
@@ -120,6 +125,7 @@ pub enum libusb_class_code {
 
 /**
  * Descriptor types as defined by the USB specification. */
+#[repr(C)]
 pub enum libusb_descriptor_type {
 	/** Device descriptor. See libusb_device_descriptor. */
 	LIBUSB_DT_DEVICE = 0x01,
@@ -161,6 +167,7 @@ pub enum libusb_descriptor_type {
 	LIBUSB_DT_SS_ENDPOINT_COMPANION = 0x30
 }
 
+#[repr(C)]
 pub enum libusb_endpoint_direction {
 	/** In: device-to-host */
 	LIBUSB_ENDPOINT_IN = 0x80,
@@ -169,6 +176,7 @@ pub enum libusb_endpoint_direction {
 	LIBUSB_ENDPOINT_OUT = 0x00
 }
 
+#[repr(C)]
 pub enum libusb_transfer_type {
 	/** Control endpoint */
 	LIBUSB_TRANSFER_TYPE_CONTROL = 0,
@@ -188,6 +196,7 @@ pub enum libusb_transfer_type {
  * descriptor is documented in section 9.6.1 of the USB 3.0 specification.
  * All multiple-byte fields are represented in host-endian format.
  */
+#[repr(C)]
 pub struct libusb_device_descriptor {
 	/** Size of this descriptor (in bytes) */
 	pub bLength: uint8_t,
@@ -243,6 +252,7 @@ pub struct libusb_device_descriptor {
  * descriptor is documented in section 9.6.6 of the USB 3.0 specification.
  * All multiple-byte fields are represented in host-endian format.
  */
+#[repr(C)]
 pub struct libusb_endpoint_descriptor {
 	/** Size of this descriptor (in bytes) */
 	pub bLength: uint8_t,
@@ -293,6 +303,7 @@ pub struct libusb_endpoint_descriptor {
  * descriptor is documented in section 9.6.5 of the USB 3.0 specification.
  * All multiple-byte fields are represented in host-endian format.
  */
+#[repr(C)]
 pub struct libusb_interface_descriptor {
 	/** Size of this descriptor (in bytes) */
 	pub bLength: uint8_t,
@@ -341,6 +352,7 @@ pub struct libusb_interface_descriptor {
 /**
  * A collection of alternate settings for a particular USB interface.
  */
+#[repr(C)]
 pub struct libusb_interface {
 	/** Array of interface descriptors. The length of this array is determined
 	 * by the num_altsetting field. */
@@ -355,6 +367,7 @@ pub struct libusb_interface {
  * descriptor is documented in section 9.6.3 of the USB 3.0 specification.
  * All multiple-byte fields are represented in host-endian format.
  */
+#[repr(C)]
 pub struct libusb_config_descriptor {
 	/** Size of this descriptor (in bytes) */
 	pub bLength: uint8_t,
@@ -403,7 +416,8 @@ pub struct libusb_config_descriptor {
  * error code or libusb_strerror() to get an end-user suitable description of
  * an error code.
  */
- #[deriving(Show)]
+#[deriving(Show)]
+#[repr(C)]
 pub enum libusb_error {
 	/** Success (no error) */
 	LIBUSB_SUCCESS = 0,
@@ -454,6 +468,7 @@ pub enum libusb_error {
 /** \ingroup asyncio
  * Transfer status codes */
 #[deriving(FromPrimitive,Show,PartialEq)]
+#[repr(C)]
 pub enum libusb_transfer_status {
 	/** Transfer completed without error. Note that this does not indicate
 	 * that the entire amount of requested data was transferred. */
@@ -481,6 +496,7 @@ pub enum libusb_transfer_status {
 
 /** \ingroup asyncio
  * Isochronous packet descriptor. */
+#[repr(C)]
 pub struct libusb_iso_packet_descriptor {
 	/** Length of data to request in this packet */
 	length: c_uint,
@@ -492,7 +508,7 @@ pub struct libusb_iso_packet_descriptor {
 	status: libusb_transfer_status,
 }
 
-type libusb_callback_fn = extern "C" fn(*mut libusb_transfer);
+pub type libusb_callback_fn = extern "C" fn(*mut libusb_transfer);
 
 /** \ingroup asyncio
  * The generic USB transfer structure. The user populates this structure and
@@ -500,6 +516,7 @@ type libusb_callback_fn = extern "C" fn(*mut libusb_transfer);
  * completed, the library populates the transfer with the results and passes
  * it back to the user.
  */
+#[repr(C)]
 pub struct libusb_transfer {
 	/** Handle of the device that this transfer will be submitted to */
 	pub dev_handle: *mut libusb_device_handle,
@@ -563,6 +580,7 @@ impl libusb_transfer {
 }
 
 /** Setup packet for control transfers. */
+#[repr(C)]
 pub struct libusb_control_setup {
 	/** Request type. Bits 0:4 determine recipient, see
 	 * \ref libusb_request_recipient. Bits 5:6 determine type, see
