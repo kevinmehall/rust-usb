@@ -15,11 +15,11 @@ use std::comm::{Receiver, Sender};
 use std::mem::transmute;
 use std::mem::size_of;
 use std::vec::Vec;
-use std::ty::Unsafe;
+use std::cell::UnsafeCell;
 
 use sync::Arc;
-use std::sync::atomics::{Ordering, SeqCst,AtomicInt};
-use native::task;
+use std::sync::atomic::{SeqCst, AtomicInt};
+use std::task;
 
 pub mod libusb;
 
@@ -39,7 +39,7 @@ impl Drop for ContextData {
 }
 
 pub struct Context {
-	bx: Arc<Unsafe<ContextData>>
+	bx: Arc<UnsafeCell<ContextData>>
 }
 
 impl Context {
@@ -49,7 +49,7 @@ impl Context {
 			let r = libusb_init(&mut ctx);
 
 			Context{
-				bx: Arc::new(Unsafe::new(ContextData{
+				bx: Arc::new(UnsafeCell::new(ContextData{
 					ctx: ctx,
 					open_device_count: AtomicInt::new(0)
 				}))
@@ -83,7 +83,7 @@ impl Context {
 	}
 
 	pub fn find_by_vid_pid(&self, vid: uint, pid: uint) -> Option<Device> {
-		self.listDevices().move_iter().find(|d| {
+		self.listDevices().into_iter().find(|d| {
 			let desc = d.descriptor();
 			desc.idVendor as uint == vid && desc.idProduct as uint == pid
 		})
@@ -96,7 +96,7 @@ impl Context {
 		if old_count == 0 {
 			let bx = self.bx.clone();
 
-			fn threadfn(tbx: &Arc<Unsafe<ContextData>>) {
+			fn threadfn(tbx: &Arc<UnsafeCell<ContextData>>) {
 				unsafe {
 					let ctx = (*tbx.get()).ctx;
 					let count = &(*tbx.get()).open_device_count;
@@ -185,7 +185,7 @@ impl Device {
 			if r == 0 {
 				self.ctx.device_opened();
 				Ok(DeviceHandle {
-					bx: Arc::new(Unsafe::new(DeviceHandleData {
+					bx: Arc::new(UnsafeCell::new(DeviceHandleData {
 						dev: handle,
 						ctx: self.ctx.clone()
 					}))
@@ -230,7 +230,7 @@ impl Drop for DeviceHandleData {
 }
 
 pub struct DeviceHandle {
-	bx: Arc<Unsafe<DeviceHandleData>>
+	bx: Arc<UnsafeCell<DeviceHandleData>>
 }
 
 impl DeviceHandle {
@@ -321,7 +321,7 @@ impl DeviceHandle {
 				0, LIBUSB_TRANSFER_TYPE_CONTROL, total_length, ptr);
 
 			if status == LIBUSB_TRANSFER_COMPLETED {
-				Ok(buf.slice(setup_length, setup_length+actual_length).to_owned())
+				Ok(buf.slice(setup_length, setup_length+actual_length).to_vec())
 			} else {
 				Err(status)
 			}
