@@ -63,13 +63,13 @@ impl Context {
 		}
 	}
 
-	pub fn setDebug(&self, level: int) {
+	pub fn set_debug(&self, level: int) {
 		unsafe{
 			libusb_set_debug(self.ptr(), level as c_int);
 		}
 	}
 
-	pub fn listDevices(&self) -> Vec<Device> {
+	pub fn list_devices(&self) -> Vec<Device> {
 		unsafe{
 			let mut list: *mut *mut libusb_device = intrinsics::init();
 			let num_devices = libusb_get_device_list(self.ptr(), &mut list);
@@ -83,7 +83,7 @@ impl Context {
 	}
 
 	pub fn find_by_vid_pid(&self, vid: uint, pid: uint) -> Option<Device> {
-		self.listDevices().into_iter().find(|d| {
+		self.list_devices().into_iter().find(|d| {
 			let desc = d.descriptor();
 			desc.idVendor as uint == vid && desc.idProduct as uint == pid
 		})
