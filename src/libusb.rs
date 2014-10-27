@@ -295,7 +295,7 @@ pub struct libusb_endpoint_descriptor {
 	pub extra: *const uint8_t,
 
 	/** Length of the extra descriptors, in bytes. */
-	pub extra_length: int,
+	pub extra_length: c_int,
 }
 
 /**
@@ -406,7 +406,7 @@ pub struct libusb_config_descriptor {
 	pub extra: *const uint8_t,
 
 	/** Length of the extra descriptors, in bytes. */
-	pub extra_length: int,
+	pub extra_length: c_int,
 }
 
 /**
