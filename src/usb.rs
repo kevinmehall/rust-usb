@@ -7,6 +7,8 @@ extern crate core;
 extern crate sync;
 
 use libusb::*;
+use libusb::libusb_transfer_status::*;
+use libusb::libusb_transfer_type::*;
 use libc::{c_int, c_void, size_t, malloc, free};
 use std::intrinsics;
 use std::slice;
