@@ -1,4 +1,4 @@
 language: rust
 script:
   - cargo build
-
+  - rustc examples/test/main.rs -L target
