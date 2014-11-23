@@ -2,7 +2,10 @@
 
 name = "usb"
 version = "0.1.0"
-authors = [ "km@kevinmehall.net", "it.daniher@gmail.com" ]
+authors = [ "Kevin Mehall <km@kevinmehall.net>", "Ian Daniher <it.daniher@gmail.com>" ]
+description = "Library for low-level access to USB devices via libusb"
+license = "MIT"
+keywords = ["USB", "hardware", "bindings"]
 
 [lib]
 name = "usb"
