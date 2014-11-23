@@ -1,5 +1,6 @@
 #![ crate_type = "lib" ]
 #![ feature(globs) ]
+#![ allow(non_snake_case) ]
 
 extern crate libc;
 extern crate core;
@@ -48,6 +49,7 @@ impl Context {
 		unsafe{
 			let mut ctx: *mut libusb_context = intrinsics::init();
 			let r = libusb_init(&mut ctx);
+			assert!(r == 0);
 
 			Context{
 				bx: Arc::new(UnsafeCell::new(ContextData{
@@ -102,7 +104,7 @@ impl Context {
 					let ctx = (*tbx.get()).ctx;
 					let count = &(*tbx.get()).open_device_count;
 
-					while (count.load(SeqCst) > 0) {
+					while count.load(SeqCst) > 0 {
 						libusb_handle_events(ctx);
 					}
 				}
@@ -377,7 +379,7 @@ impl DeviceHandle {
 				libusb_submit_transfer(th.t);
 			}
 
-			while (num_transfers > 0) {
+			while num_transfers > 0 {
 				let transfer: *mut libusb_transfer = port.recv();
 
 				if (*transfer).get_status() == LIBUSB_TRANSFER_COMPLETED {
@@ -421,7 +423,7 @@ impl DeviceHandle {
 				}
 			}
 
-			while (running_transfers > 0) {
+			while running_transfers > 0 {
 				let transfer: *mut libusb_transfer = port.recv();
 
 				if (*transfer).get_status() == LIBUSB_TRANSFER_COMPLETED {
