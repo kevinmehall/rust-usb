@@ -3,8 +3,6 @@
 #![ allow(non_snake_case) ]
 
 extern crate libc;
-extern crate core;
-extern crate sync;
 
 use libusb::*;
 use libusb::libusb_transfer_status::*;
@@ -19,7 +17,7 @@ use std::mem::size_of;
 use std::vec::Vec;
 use std::cell::UnsafeCell;
 
-use sync::Arc;
+use std::sync::Arc;
 use std::sync::atomic::{SeqCst, AtomicInt};
 use std::task;
 
