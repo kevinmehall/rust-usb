@@ -72,12 +72,10 @@ impl Context {
 		unsafe{
 			let mut list: *mut *mut libusb_device = intrinsics::init();
 			let num_devices = libusb_get_device_list(self.ptr(), &mut list);
-			let r = slice::raw::mut_buf_as_slice(list, num_devices as uint, |l|{
-				l.iter().map(|i| Device{dev: *i, ctx: (*self).clone()}).collect()
-			});
-
+			let l = slice::from_raw_mut_buf(&list, num_devices as uint);
+			let devices = l.iter().map(|i| Device{dev: *i, ctx: (*self).clone()}).collect();
 			libusb_free_device_list(list, 0);
-			r
+			devices
 		}
 	}
 
@@ -379,9 +377,8 @@ impl DeviceHandle {
 				let transfer: *mut libusb_transfer = port.recv();
 
 				if (*transfer).get_status() == LIBUSB_TRANSFER_COMPLETED {
-					slice::raw::buf_as_slice((*transfer).buffer as *const u8, size, |b| {
-						running &= cb(Ok(b))
-					});
+					let b = slice::from_raw_mut_buf(&(*transfer).buffer, size).as_slice();
+					running &= cb(Ok(b));
 				} else {
 					running = false;
 					running &= cb(Err((*transfer).get_status()));
@@ -408,9 +405,8 @@ impl DeviceHandle {
 				endpoint, transfer_type, size, num_transfers);
 
 			for th in transfers.iter() {
-				slice::raw::mut_buf_as_slice((*th.t).buffer, size, |b| {
-					running &= cb(Ok(b));
-				});
+				let b = slice::from_raw_mut_buf(&(*th.t).buffer, size);
+				running &= cb(Ok(b));
 				if running {
 					libusb_submit_transfer(th.t);
 					running_transfers += 1;
@@ -423,9 +419,8 @@ impl DeviceHandle {
 				let transfer: *mut libusb_transfer = port.recv();
 
 				if (*transfer).get_status() == LIBUSB_TRANSFER_COMPLETED {
-					slice::raw::mut_buf_as_slice((*transfer).buffer, size, |b| {
-						running &= cb(Ok(b))
-					});
+					let b = slice::from_raw_mut_buf(&(*transfer).buffer, size);
+					running &= cb(Ok(b))
 				} else {
 					running = false;
 					running &= cb(Err((*transfer).get_status()));
