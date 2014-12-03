@@ -3,6 +3,13 @@
 use libc::{c_int, c_uint, c_void, size_t, uint8_t, uint16_t};
 use std::num;
 
+pub use self::libusb_class_code::*;
+pub use self::libusb_descriptor_type::*;
+pub use self::libusb_endpoint_direction::*;
+pub use self::libusb_transfer_type::*;
+pub use self::libusb_error::*;
+pub use self::libusb_transfer_status::*;
+
 #[repr(C)]
 pub struct libusb_context;
 
