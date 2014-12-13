@@ -184,6 +184,7 @@ pub enum libusb_endpoint_direction {
 }
 
 #[repr(C)]
+#[deriving(Copy)]
 pub enum libusb_transfer_type {
 	/** Control endpoint */
 	LIBUSB_TRANSFER_TYPE_CONTROL = 0,
