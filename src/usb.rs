@@ -377,8 +377,8 @@ impl DeviceHandle {
 				let transfer: *mut libusb_transfer = port.recv();
 
 				if (*transfer).get_status() == LIBUSB_TRANSFER_COMPLETED {
-					let b = slice::from_raw_mut_buf(&(*transfer).buffer, size).as_slice();
-					running &= cb(Ok(b));
+					let b = slice::from_raw_mut_buf(&(*transfer).buffer, size);
+					running &= cb(Ok(b.as_slice()));
 				} else {
 					running = false;
 					running &= cb(Err((*transfer).get_status()));
