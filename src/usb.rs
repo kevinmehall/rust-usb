@@ -93,18 +93,16 @@ impl Context {
 		if old_count == 0 {
 			let bx = self.bx.clone();
 
-			fn threadfn(tbx: &Arc<UnsafeCell<ContextData>>) {
+			task::spawn(move || {
 				unsafe {
-					let ctx = (*tbx.get()).ctx;
-					let count = &(*tbx.get()).open_device_count;
+					let ctx = (*bx.get()).ctx;
+					let count = &(*bx.get()).open_device_count;
 
 					while count.load(SeqCst) > 0 {
 						libusb_handle_events(ctx);
 					}
 				}
-			}
-
-			task::spawn(proc() {threadfn(&bx);});
+			});
 		}
 	}
 
