@@ -1,7 +1,7 @@
 [package]
 
 name = "usb"
-version = "0.1.2"
+version = "0.1.3"
 authors = [ "Kevin Mehall <km@kevinmehall.net>", "Ian Daniher <it.daniher@gmail.com>" ]
 description = "Library for low-level access to USB devices via libusb"
 license = "MIT"
