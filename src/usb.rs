@@ -17,7 +17,7 @@ use std::cell::UnsafeCell;
 
 use std::sync::Arc;
 use std::sync::atomic::{SeqCst, AtomicInt};
-use std::task;
+use std::thread::{Thread};
 
 pub mod libusb;
 
@@ -35,6 +35,8 @@ impl Drop for ContextData {
 		}
 	}
 }
+
+unsafe impl Sync for UnsafeCell<ContextData> {}
 
 pub struct Context {
 	bx: Arc<UnsafeCell<ContextData>>
@@ -93,7 +95,7 @@ impl Context {
 		if old_count == 0 {
 			let bx = self.bx.clone();
 
-			task::spawn(move || {
+			Thread::spawn(move || {
 				unsafe {
 					let ctx = (*bx.get()).ctx;
 					let count = &(*bx.get()).open_device_count;
@@ -102,7 +104,7 @@ impl Context {
 						libusb_handle_events(ctx);
 					}
 				}
-			});
+			}).detach();
 		}
 	}
 
@@ -224,6 +226,8 @@ impl Drop for DeviceHandleData {
 	}
 }
 
+unsafe impl Sync for UnsafeCell<DeviceHandleData> {}
+
 pub struct DeviceHandle {
 	bx: Arc<UnsafeCell<DeviceHandleData>>
 }
@@ -246,7 +250,8 @@ impl DeviceHandle {
 		endpoint: u8,
 		transfer_type: libusb_transfer_type,
 		length: uint,
-		buffer: *mut u8) -> (libusb_transfer_status, uint) {
+		buffer: *mut u8,
+		timeout: u32) -> (libusb_transfer_status, uint) {
 
 		let (chan, port) : (Sender<()>, Receiver<()>) = channel();
 
@@ -254,7 +259,7 @@ impl DeviceHandle {
 		(*t).dev_handle = self.ptr();
 		(*t).endpoint = endpoint;
 		(*t).transfer_type = transfer_type as u8;
-		(*t).timeout = 0;
+		(*t).timeout = timeout;
 		(*t).length = length as c_int;
 		(*t).callback = rust_usb_callback;
 		(*t).user_data = transmute(box chan);
@@ -270,13 +275,14 @@ impl DeviceHandle {
 	pub fn read(&self,
 			endpoint: u8,
 			transfer_type: libusb_transfer_type,
-			size: uint
+			size: uint,
+			timeout: u32
 			) -> Result<Vec<u8>, libusb_transfer_status> {
 		let mut buf: Vec<u8> = Vec::from_elem(size, 0u8);
 		unsafe {
 			let ptr = buf.as_mut_ptr();
 			let (status, actual_length) = self.submit_transfer_sync(
-				endpoint, transfer_type, size, ptr);
+				endpoint, transfer_type, size, ptr, timeout);
 
 			if status == LIBUSB_TRANSFER_COMPLETED {
 				buf.truncate(actual_length);
@@ -287,12 +293,17 @@ impl DeviceHandle {
 		}
 	}
 
-	pub fn write(&self, endpoint: u8, transfer_type: libusb_transfer_type, buf: &[u8]) -> Result<(), libusb_transfer_status> {
+	pub fn write(&self,
+			endpoint: u8,
+			transfer_type: libusb_transfer_type,
+			buf: &[u8],
+			timeout: u32
+			) -> Result<(), libusb_transfer_status> {
 		unsafe {
 			let ptr = buf.as_ptr() as *mut u8;
 
 			let (status, _) = self.submit_transfer_sync(
-				endpoint, transfer_type, buf.len(), ptr);
+				endpoint, transfer_type, buf.len(), ptr, timeout);
 
 			if status == LIBUSB_TRANSFER_COMPLETED {
 				Ok(())
@@ -303,7 +314,7 @@ impl DeviceHandle {
 	}
 
 	pub fn ctrl_read(&self, bmRequestType: u8, bRequest: u8,
-		wValue:u16, wIndex: u16, length: uint) -> Result<Vec<u8>, libusb_transfer_status> {
+		wValue:u16, wIndex: u16, length: uint, timeout: u32) -> Result<Vec<u8>, libusb_transfer_status> {
 
 		let setup_length = size_of::<libusb_control_setup>();
 		let total_length = setup_length + length as uint;
@@ -313,7 +324,7 @@ impl DeviceHandle {
 			let ptr = fill_setup_buf(buf.as_mut_slice(), bmRequestType, bRequest, wValue, wIndex, length);
 
 			let (status, actual_length) = self.submit_transfer_sync(
-				0, LIBUSB_TRANSFER_TYPE_CONTROL, total_length, ptr);
+				0, LIBUSB_TRANSFER_TYPE_CONTROL, total_length, ptr, timeout);
 
 			if status == LIBUSB_TRANSFER_COMPLETED {
 				Ok(buf.slice(setup_length, setup_length+actual_length).to_vec())
@@ -324,12 +335,12 @@ impl DeviceHandle {
 	}
 
 	pub fn ctrl_write(&self, bmRequestType: u8, bRequest: u8,
-		wValue:u16, wIndex: u16, buf: &[u8]) -> Result<(), libusb_transfer_status> {
+		wValue:u16, wIndex: u16, buf: &[u8], timeout: u32) -> Result<(), libusb_transfer_status> {
 		unsafe {
 			let mut setup_buf = Vec::from_elem(size_of::<libusb_control_setup>(), 0u8);
 			fill_setup_buf(setup_buf.as_mut_slice(), bmRequestType, bRequest, wValue, wIndex, buf.len());
 			setup_buf.push_all(buf);
-			self.write(0, LIBUSB_TRANSFER_TYPE_CONTROL, setup_buf.slice_from(0))
+			self.write(0, LIBUSB_TRANSFER_TYPE_CONTROL, setup_buf.slice_from(0), timeout)
 		}
 	}
 
