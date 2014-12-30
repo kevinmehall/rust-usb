@@ -36,6 +36,8 @@ impl Drop for ContextData {
 	}
 }
 
+unsafe impl Sync for UnsafeCell<ContextData> {}
+
 pub struct Context {
 	bx: Arc<UnsafeCell<ContextData>>
 }
@@ -223,6 +225,8 @@ impl Drop for DeviceHandleData {
 		}
 	}
 }
+
+unsafe impl Sync for UnsafeCell<DeviceHandleData> {}
 
 pub struct DeviceHandle {
 	bx: Arc<UnsafeCell<DeviceHandleData>>
