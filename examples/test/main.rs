@@ -1,6 +1,8 @@
 extern crate usb;
 use usb::libusb;
 
+use std::thread::{Thread};
+
 fn main() {
 	let c = usb::Context::new();
 	c.set_debug(2);
@@ -24,7 +26,7 @@ fn main() {
 					let handle1 = handle.clone();
 					let handle2 = handle.clone();
 
-					std::task::spawn(move || {
+					Thread::spawn(move || {
 						println!("1 Opened device {}", handle1.ptr());
 						println!("ctrl {}", handle1.ctrl_read(0xC0, 0x20, 0, 0, 64));
 						println!("Write {}", handle1.write(0x02, libusb::LIBUSB_TRANSFER_TYPE_BULK, &[1,2,3]));
@@ -41,8 +43,8 @@ fn main() {
 							true
 						});
 
-					});
-					std::task::spawn(move || {
+					}).detach();
+					Thread::spawn(move || {
 						println!("2 Opened device {}", handle2.ptr());
 						println!("Read {}", handle2.read(0x81, libusb::LIBUSB_TRANSFER_TYPE_BULK, 64));
 						handle2.read_stream(0x81, libusb::LIBUSB_TRANSFER_TYPE_BULK, 640, 8, |r| {
@@ -52,7 +54,7 @@ fn main() {
 							}
 							true
 						});
-					});
+					}).detach();
 				},
 				Err(code) => {
 					println!("Error opening device: {}", code);

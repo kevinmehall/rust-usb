@@ -17,7 +17,7 @@ use std::cell::UnsafeCell;
 
 use std::sync::Arc;
 use std::sync::atomic::{SeqCst, AtomicInt};
-use std::task;
+use std::thread::{Thread};
 
 pub mod libusb;
 
@@ -93,7 +93,7 @@ impl Context {
 		if old_count == 0 {
 			let bx = self.bx.clone();
 
-			task::spawn(move || {
+			Thread::spawn(move || {
 				unsafe {
 					let ctx = (*bx.get()).ctx;
 					let count = &(*bx.get()).open_device_count;
@@ -102,7 +102,7 @@ impl Context {
 						libusb_handle_events(ctx);
 					}
 				}
-			});
+			}).detach();
 		}
 	}
 
