@@ -9,3 +9,7 @@ keywords = ["USB", "hardware", "bindings"]
 
 [lib]
 name = "usb"
+
+[[example]]
+name = "test"
+path = "examples/test/main.rs"
