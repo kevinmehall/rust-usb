@@ -1,3 +1,5 @@
+#![allow(unstable)]
+
 extern crate usb;
 use usb::libusb;
 
@@ -14,8 +16,8 @@ fn main() {
 		println!("Device {:03}.{:03} {:04x}:{:04x}",
 			dev.bus(),
 			dev.address(),
-			desc.idVendor as uint,
-			desc.idProduct as uint
+			desc.idVendor,
+			desc.idProduct
 		);
 	}
 
@@ -26,38 +28,40 @@ fn main() {
 					let handle1 = handle.clone();
 					let handle2 = handle.clone();
 
-					Thread::spawn(move || {
-						println!("1 Opened device {}", handle1.ptr());
-						println!("ctrl {}", handle1.ctrl_read(0xC0, 0x20, 0, 0, 64, 0));
-						println!("Write {}", handle1.write(0x02, libusb::LIBUSB_TRANSFER_TYPE_BULK, &[1,2,3], 0));
-						handle1.write_stream(0x02, libusb::LIBUSB_TRANSFER_TYPE_BULK, 640, 8, |r| {
+					let t1 = Thread::scoped(move || {
+						println!("1 Opened device {:?}", handle1.ptr());
+						println!("ctrl {:?}", handle1.ctrl_read(0xC0, 0x20, 0, 0, 64, 0));
+						println!("Write {:?}", handle1.write(0x02, libusb::LIBUSB_TRANSFER_TYPE_BULK, &[1,2,3], 0));
+						handle1.write_stream(0x02, libusb::LIBUSB_TRANSFER_TYPE_BULK, 640, 8, &mut |r| {
 							match r {
 								Ok(buf) => {
 									println!("Write OK");
 									buf[0] = 5;
 								},
 								Err(code) => {
-									println!("Write error {}", code);
+									println!("Write error {:?}", code);
 								}
 							}
 							true
 						});
-
-					}).detach();
-					Thread::spawn(move || {
-						println!("2 Opened device {}", handle2.ptr());
-						println!("Read {}", handle2.read(0x81, libusb::LIBUSB_TRANSFER_TYPE_BULK, 64, 0));
-						handle2.read_stream(0x81, libusb::LIBUSB_TRANSFER_TYPE_BULK, 640, 8, |r| {
+					});
+					let t2 = Thread::scoped(move || {
+						println!("2 Opened device {:?}", handle2.ptr());
+						println!("Read {:?}", handle2.read(0x81, libusb::LIBUSB_TRANSFER_TYPE_BULK, 64, 0));
+						handle2.read_stream(0x81, libusb::LIBUSB_TRANSFER_TYPE_BULK, 640, 8, &mut |r| {
 							match r {
-								Ok(buf) => println!("Read {}", buf.slice(0, 10)),
-								Err(code) => println!("Read error {}", code)
+								Ok(buf) => println!("Read {:?}", buf.slice(0, 10)),
+								Err(code) => println!("Read error {:?}", code)
 							}
 							true
 						});
-					}).detach();
+					});
+
+					t1.join().ok().unwrap();
+					t2.join().ok().unwrap();
 				},
 				Err(code) => {
-					println!("Error opening device: {}", code);
+					println!("Error opening device: {:?}", code);
 				}
 			}
 		},
