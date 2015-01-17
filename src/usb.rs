@@ -1,46 +1,24 @@
-#![ feature(box_syntax, libc, core, collections) ]
+#![ feature(box_syntax, libc, core, collections, unsafe_destructor) ]
 #![ allow(non_snake_case) ]
 
 extern crate libc;
 
 use libusb::*;
-use libc::{c_int, c_void, size_t, malloc, free};
+use libc::c_int;
 use std::intrinsics;
 use std::slice;
 use std::iter::repeat;
 use std::result::Result;
-use std::sync::mpsc::{Receiver, Sender, channel};
 use std::mem::transmute;
 use std::mem::size_of;
 use std::vec::Vec;
 use std::cell::UnsafeCell;
 
-use std::sync::Arc;
-use std::sync::atomic::{Ordering, AtomicInt};
-use std::thread::{Thread};
-
 pub mod libusb;
 
-pub struct ContextData {
-	ctx: *mut libusb_context,
-	open_device_count: AtomicInt
-}
-
-impl Drop for ContextData {
-	fn drop(&mut self) {
-		unsafe {
-			assert!(self.open_device_count.load(Ordering::SeqCst) == 0);
-			// TODO: make sure backend thread is dead if the last device just closed
-			libusb_exit(self.ctx);
-		}
-	}
-}
-
-unsafe impl Sync for UnsafeCell<ContextData> {}
-
-pub struct Context {
-	bx: Arc<UnsafeCell<ContextData>>
-}
+pub struct Context(*mut libusb_context);
+unsafe impl Send for Context {}
+unsafe impl Sync for Context {}
 
 impl Context {
 	pub fn new() -> Context {
@@ -48,20 +26,12 @@ impl Context {
 			let mut ctx: *mut libusb_context = intrinsics::init();
 			let r = libusb_init(&mut ctx);
 			assert!(r == 0);
-
-			Context{
-				bx: Arc::new(UnsafeCell::new(ContextData{
-					ctx: ctx,
-					open_device_count: AtomicInt::new(0)
-				}))
-			}
+			Context(ctx)
 		}
 	}
 
 	pub fn ptr(&self) -> *mut libusb_context {
-		unsafe{
-			(*self.bx.get()).ctx
-		}
+		self.0
 	}
 
 	pub fn set_debug(&self, level: u32) {
@@ -75,7 +45,7 @@ impl Context {
 			let mut list: *mut *mut libusb_device = intrinsics::init();
 			let num_devices = libusb_get_device_list(self.ptr(), &mut list);
 			let l = slice::from_raw_parts_mut(list, num_devices as usize);
-			let devices = l.iter().map(|i| Device{dev: *i, ctx: (*self).clone()}).collect();
+			let devices = l.iter().map(|i| Device { dev: *i, ctx: self }).collect();
 			libusb_free_device_list(list, 0);
 			devices
 		}
@@ -87,74 +57,20 @@ impl Context {
 			desc.idVendor == vid && desc.idProduct == pid
 		})
 	}
-
-	fn device_opened(&self) {
-		let count = unsafe { &mut (*self.bx.get()).open_device_count };
-		let old_count = count.fetch_add(1, Ordering::SeqCst);
-
-		if old_count == 0 {
-			let bx = self.bx.clone();
-
-			Thread::spawn(move || {
-				unsafe {
-					let ctx = (*bx.get()).ctx;
-					let count = &(*bx.get()).open_device_count;
-
-					while count.load(Ordering::SeqCst) > 0 {
-						libusb_handle_events(ctx);
-					}
-				}
-			});
-		}
-	}
-
-	fn device_closed(&self) {
-		let count = unsafe { &mut (*self.bx.get()).open_device_count };
-		count.fetch_sub(1, Ordering::SeqCst);
-	}
 }
 
-extern fn rust_usb_callback(transfer: *mut libusb_transfer) {
-	unsafe {
-		let chan: Box<Sender<()>> = transmute((*transfer).user_data);
-		chan.send(()).unwrap();
-	}
-}
-
-struct TH {
-	t: *mut libusb_transfer,
-	c: Sender<*mut libusb_transfer>,
-}
-
-impl Drop for TH{
+impl Drop for Context {
 	fn drop(&mut self) {
-		unsafe {
-			free((*self.t).buffer as *mut c_void);
-			libusb_free_transfer(self.t);
-		}
+		unsafe { libusb_exit(self.0); }
 	}
 }
 
-extern fn rust_usb_stream_callback(transfer: *mut libusb_transfer) {
-	unsafe {
-		let chan: &Sender<*mut libusb_transfer> = transmute((*transfer).user_data);
-		chan.send(transfer).unwrap();
-	}
-}
-
-
-impl Clone for Context{
-	fn clone(&self) -> Context{
-		Context{bx: self.bx.clone()}
-	}
-}
-
-pub struct Device {
+pub struct Device<'c> {
 	dev: *mut libusb_device,
-	ctx: Context
+	ctx: &'c Context,
 }
 
-impl Device {
+impl<'c> Device<'c> {
 	pub fn descriptor(&self) -> Box<libusb_device_descriptor> {
 		unsafe{
 			let mut d: Box<libusb_device_descriptor> = box intrinsics::uninit();
@@ -180,12 +96,9 @@ impl Device {
 			let mut handle: *mut libusb_device_handle = intrinsics::uninit();
 			let r = libusb_open(self.dev, &mut handle);
 			if r == 0 {
-				self.ctx.device_opened();
 				Ok(DeviceHandle {
-					bx: Arc::new(UnsafeCell::new(DeviceHandleData {
-						dev: handle,
-						ctx: self.ctx.clone()
-					}))
+					dev: handle,
+					ctx: self.ctx
 				})
 			}else{
 				Err(r)
@@ -194,7 +107,8 @@ impl Device {
 	}
 }
 
-impl Drop for Device {
+#[unsafe_destructor]
+impl<'c> Drop for Device<'c> {
 	fn drop(&mut self) {
 		unsafe {
 			libusb_unref_device(self.dev);
@@ -203,40 +117,24 @@ impl Drop for Device {
 }
 
 
-impl Clone for Device {
-	fn clone(&self) -> Device {
+impl<'c> Clone for Device<'c> {
+	fn clone(&self) -> Device<'c> {
 		unsafe {
 			libusb_ref_device(self.dev);
 		}
-		Device{dev: self.dev, ctx: self.ctx.clone()}
+		Device{ dev: self.dev, ctx: self.ctx }
 	}
 }
 
-struct DeviceHandleData{
+pub struct DeviceHandle<'c> {
 	dev: *mut libusb_device_handle,
-	ctx: Context
+	ctx: &'c Context
 }
+unsafe impl<'c> Sync for DeviceHandle<'c> {}
 
-impl Drop for DeviceHandleData {
-	fn drop(&mut self) {
-		unsafe {
-			self.ctx.device_closed();
-			libusb_close(self.dev);
-		}
-	}
-}
-
-unsafe impl Sync for UnsafeCell<DeviceHandleData> {}
-
-pub struct DeviceHandle {
-	bx: Arc<UnsafeCell<DeviceHandleData>>
-}
-
-impl DeviceHandle {
+impl<'c> DeviceHandle<'c> {
 	pub fn ptr(&self) -> *mut libusb_device_handle {
-		unsafe {
-			(*self.bx.get()).dev
-		}
+		self.dev
 	}
 
 	pub fn claim_interface(&self, iface_num: u16) {
@@ -252,7 +150,14 @@ impl DeviceHandle {
 		buffer: *mut u8,
 		timeout: u32) -> (libusb_transfer_status, usize) {
 
-		let (chan, port) : (Sender<()>, Receiver<()>) = channel();
+		let completed: UnsafeCell<c_int> = UnsafeCell::new(0);
+
+		extern fn callback(transfer: *mut libusb_transfer) {
+			unsafe {
+				let completed: &UnsafeCell<c_int> = transmute((*transfer).user_data);
+				*completed.get() = 1;
+			}
+		}
 
 		let t = libusb_alloc_transfer(0);
 		(*t).dev_handle = self.ptr();
@@ -260,12 +165,16 @@ impl DeviceHandle {
 		(*t).transfer_type = transfer_type as u8;
 		(*t).timeout = timeout;
 		(*t).length = length as c_int;
-		(*t).callback = rust_usb_callback;
-		(*t).user_data = transmute(box chan);
+		(*t).callback = callback;
+		(*t).user_data = transmute(&completed);
 		(*t).buffer = buffer;
 
 		libusb_submit_transfer(t);
-		port.recv().unwrap();
+
+		while *completed.get() == 0{
+			libusb_handle_events_completed(self.ctx.ptr(), completed.get());
+		}
+
 		let r = ((*t).get_status(), (*t).actual_length as usize);
 		libusb_free_transfer(t);
 		return r;
@@ -342,105 +251,13 @@ impl DeviceHandle {
 			self.write(0, LIBUSB_TRANSFER_TYPE_CONTROL, &setup_buf, timeout)
 		}
 	}
+}
 
-	unsafe fn stream_transfers(&self, endpoint: u8,
-			transfer_type: libusb_transfer_type, size: usize,
-			num_transfers: usize) -> (Receiver<*mut libusb_transfer>, Vec<TH>) {
-
-		let (chan, port) = channel();
-
-		let transfers: Vec<_> = range(0, num_transfers).map(|_| { TH {
-			t: libusb_alloc_transfer(0),
-			c: chan.clone(),
-		}}).collect();
-
-		for th in transfers.iter() {
-			(*th.t).dev_handle = self.ptr();
-			(*th.t).endpoint = endpoint;
-			(*th.t).transfer_type = transfer_type as u8;
-			(*th.t).timeout = 0;
-			(*th.t).length = size as c_int;
-			(*th.t).callback = rust_usb_stream_callback;
-			(*th.t).buffer = malloc(size as size_t) as *mut u8;
-			(*th.t).user_data = transmute(&th.c);
-		}
-
-		return (port, transfers);
-	}
-
-	pub fn read_stream(&self, endpoint: u8,
-			transfer_type: libusb_transfer_type,
-			size: usize, mut num_transfers: usize, cb: &mut FnMut(Result<&[u8], libusb_transfer_status>) -> bool) {
-
+#[unsafe_destructor]
+impl<'c> Drop for DeviceHandle<'c> {
+	fn drop(&mut self) {
 		unsafe {
-			let mut running = true;
-			let (port, transfers) = self.stream_transfers(
-				endpoint, transfer_type, size, num_transfers);
-
-			for th in transfers.iter() {
-				libusb_submit_transfer(th.t);
-			}
-
-			while num_transfers > 0 {
-				let transfer: *mut libusb_transfer = port.recv().unwrap();
-
-				if (*transfer).get_status() == LIBUSB_TRANSFER_COMPLETED {
-					let b = slice::from_raw_parts_mut((*transfer).buffer, size);
-					running &= cb(Ok(b.as_slice()));
-				} else {
-					running = false;
-					running &= cb(Err((*transfer).get_status()));
-				}
-
-				if running {
-					let r = libusb_submit_transfer(transfer);
-					assert!(r == 0);
-				} else {
-					num_transfers -= 1;
-				}
-			}
-		}
-	}
-
-	pub fn write_stream(&self, endpoint: u8,
-			transfer_type: libusb_transfer_type,
-			size: usize, num_transfers: usize, cb: &mut FnMut(Result<(&mut[u8]), libusb_transfer_status>) -> bool) {
-
-		unsafe {
-			let mut running = true;
-			let mut running_transfers = 0us;
-			let (port, transfers) = self.stream_transfers(
-				endpoint, transfer_type, size, num_transfers);
-
-			for th in transfers.iter() {
-				let b = slice::from_raw_parts_mut((*th.t).buffer, size);
-				running &= cb(Ok(b));
-				if running {
-					libusb_submit_transfer(th.t);
-					running_transfers += 1;
-				} else {
-					break;
-				}
-			}
-
-			while running_transfers > 0 {
-				let transfer: *mut libusb_transfer = port.recv().unwrap();
-
-				if (*transfer).get_status() == LIBUSB_TRANSFER_COMPLETED {
-					let b = slice::from_raw_parts_mut((*transfer).buffer, size);
-					running &= cb(Ok(b))
-				} else {
-					running = false;
-					running &= cb(Err((*transfer).get_status()));
-				}
-
-				if running {
-					let r = libusb_submit_transfer(transfer);
-					assert!(r == 0);
-				} else {
-					running_transfers -= 1;
-				}
-			}
+			libusb_close(self.dev);
 		}
 	}
 }
@@ -458,10 +275,4 @@ unsafe fn fill_setup_buf(buf: &mut [u8], bmRequestType: u8,
 	(*setup).wLength = length as u16;
 
 	return ptr;
-}
-
-impl Clone for DeviceHandle {
-	fn clone(&self) -> DeviceHandle {
-		DeviceHandle{bx: self.bx.clone()}
-	}
 }
