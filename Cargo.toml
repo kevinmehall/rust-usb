@@ -6,6 +6,7 @@ authors = [ "Kevin Mehall <km@kevinmehall.net>", "Ian Daniher <it.daniher@gmail.
 description = "Library for low-level access to USB devices via libusb"
 license = "MIT"
 keywords = ["USB", "hardware", "bindings"]
+repository = "https://github.com/kevinmehall/rust-usb"
 
 [lib]
 name = "usb"
