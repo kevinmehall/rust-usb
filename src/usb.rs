@@ -1,5 +1,5 @@
-#![ feature(box_syntax) ]
-#![ allow(non_snake_case, unstable) ]
+#![ feature(box_syntax, libc, core, collections) ]
+#![ allow(non_snake_case) ]
 
 extern crate libc;
 
@@ -74,7 +74,7 @@ impl Context {
 		unsafe{
 			let mut list: *mut *mut libusb_device = intrinsics::init();
 			let num_devices = libusb_get_device_list(self.ptr(), &mut list);
-			let l = slice::from_raw_mut_buf(&list, num_devices as usize);
+			let l = slice::from_raw_parts_mut(list, num_devices as usize);
 			let devices = l.iter().map(|i| Device{dev: *i, ctx: (*self).clone()}).collect();
 			libusb_free_device_list(list, 0);
 			devices
@@ -326,7 +326,7 @@ impl DeviceHandle {
 				0, LIBUSB_TRANSFER_TYPE_CONTROL, total_length, ptr, timeout);
 
 			if status == LIBUSB_TRANSFER_COMPLETED {
-				Ok(buf.slice(setup_length, setup_length+actual_length).to_vec())
+				Ok(buf[setup_length..setup_length+actual_length].to_vec())
 			} else {
 				Err(status)
 			}
@@ -339,7 +339,7 @@ impl DeviceHandle {
 			let mut setup_buf: Vec<_> = repeat(0u8).take(size_of::<libusb_control_setup>()).collect();
 			fill_setup_buf(setup_buf.as_mut_slice(), bmRequestType, bRequest, wValue, wIndex, buf.len());
 			setup_buf.push_all(buf);
-			self.write(0, LIBUSB_TRANSFER_TYPE_CONTROL, setup_buf.slice_from(0), timeout)
+			self.write(0, LIBUSB_TRANSFER_TYPE_CONTROL, &setup_buf, timeout)
 		}
 	}
 
@@ -385,7 +385,7 @@ impl DeviceHandle {
 				let transfer: *mut libusb_transfer = port.recv().unwrap();
 
 				if (*transfer).get_status() == LIBUSB_TRANSFER_COMPLETED {
-					let b = slice::from_raw_mut_buf(&(*transfer).buffer, size);
+					let b = slice::from_raw_parts_mut((*transfer).buffer, size);
 					running &= cb(Ok(b.as_slice()));
 				} else {
 					running = false;
@@ -413,7 +413,7 @@ impl DeviceHandle {
 				endpoint, transfer_type, size, num_transfers);
 
 			for th in transfers.iter() {
-				let b = slice::from_raw_mut_buf(&(*th.t).buffer, size);
+				let b = slice::from_raw_parts_mut((*th.t).buffer, size);
 				running &= cb(Ok(b));
 				if running {
 					libusb_submit_transfer(th.t);
@@ -427,7 +427,7 @@ impl DeviceHandle {
 				let transfer: *mut libusb_transfer = port.recv().unwrap();
 
 				if (*transfer).get_status() == LIBUSB_TRANSFER_COMPLETED {
-					let b = slice::from_raw_mut_buf(&(*transfer).buffer, size);
+					let b = slice::from_raw_parts_mut((*transfer).buffer, size);
 					running &= cb(Ok(b))
 				} else {
 					running = false;
