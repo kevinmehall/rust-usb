@@ -32,6 +32,7 @@ fn main() {
 
 	let t2 = thread::scoped(|| {
 		println!("2 Opened device {:?}", handle.ptr());
+		println!("ctrl {:?}", handle.ctrl_write(0x40, 0x81, 0, 0, &[1,2,3], 0));
 		println!("Read {:?}", handle.read(0x81, libusb::LIBUSB_TRANSFER_TYPE_BULK, 64, 0));
 	});
 

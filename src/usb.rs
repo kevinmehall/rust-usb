@@ -13,6 +13,7 @@ use std::mem::transmute;
 use std::mem::size_of;
 use std::vec::Vec;
 use std::cell::UnsafeCell;
+use std::num::Int;
 
 pub mod libusb;
 
@@ -227,10 +228,9 @@ impl<'c> DeviceHandle<'c> {
 		let setup_length = size_of::<libusb_control_setup>();
 		let total_length = setup_length + length;
 		let mut buf: Vec<u8> = repeat(0u8).take(total_length).collect();
+		let ptr = fill_setup_buf(&mut buf, bmRequestType, bRequest, wValue, wIndex, length);
 
 		unsafe{
-			let ptr = fill_setup_buf(buf.as_mut_slice(), bmRequestType, bRequest, wValue, wIndex, length);
-
 			let (status, actual_length) = self.submit_transfer_sync(
 				0, LIBUSB_TRANSFER_TYPE_CONTROL, total_length, ptr, timeout);
 
@@ -244,12 +244,10 @@ impl<'c> DeviceHandle<'c> {
 
 	pub fn ctrl_write(&self, bmRequestType: u8, bRequest: u8,
 		wValue:u16, wIndex: u16, buf: &[u8], timeout: u32) -> Result<(), libusb_transfer_status> {
-		unsafe {
-			let mut setup_buf: Vec<_> = repeat(0u8).take(size_of::<libusb_control_setup>()).collect();
-			fill_setup_buf(setup_buf.as_mut_slice(), bmRequestType, bRequest, wValue, wIndex, buf.len());
-			setup_buf.push_all(buf);
-			self.write(0, LIBUSB_TRANSFER_TYPE_CONTROL, &setup_buf, timeout)
-		}
+		let mut setup_buf: Vec<_> = repeat(0u8).take(size_of::<libusb_control_setup>()).collect();
+		fill_setup_buf(setup_buf.as_mut_slice(), bmRequestType, bRequest, wValue, wIndex, buf.len());
+		setup_buf.push_all(buf);
+		self.write(0, LIBUSB_TRANSFER_TYPE_CONTROL, &setup_buf, timeout)
 	}
 }
 
@@ -262,17 +260,21 @@ impl<'c> Drop for DeviceHandle<'c> {
 	}
 }
 
-unsafe fn fill_setup_buf(buf: &mut [u8], bmRequestType: u8,
+fn fill_setup_buf(buf: &mut [u8], bmRequestType: u8,
 	bRequest: u8, wValue:u16, wIndex: u16, length: usize) -> *mut u8 {
 	let ptr = buf.as_mut_ptr();
 	let setup = ptr as *mut libusb_control_setup;
 
-	// TODO: these are always little-endian
-	(*setup).bmRequestType = bmRequestType;
-	(*setup).bRequest = bRequest;
-	(*setup).wValue = wValue;
-	(*setup).wIndex = wIndex;
-	(*setup).wLength = length as u16;
+	assert!(buf.len() >= 8);
+	assert!(length <= (std::u16::MAX as usize));
+
+	unsafe {
+		(*setup).bmRequestType = bmRequestType;
+		(*setup).bRequest = bRequest;
+		(*setup).wValue = wValue.to_le();
+		(*setup).wIndex = wIndex.to_le();
+		(*setup).wLength = (length as u16).to_le();
+	}
 
 	return ptr;
 }
