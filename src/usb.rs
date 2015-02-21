@@ -1,4 +1,4 @@
-#![ feature(box_syntax, libc, core, collections, unsafe_destructor) ]
+#![ feature(libc, core, collections, unsafe_destructor) ]
 #![ allow(non_snake_case) ]
 
 extern crate libc;
@@ -72,10 +72,10 @@ pub struct Device<'c> {
 }
 
 impl<'c> Device<'c> {
-	pub fn descriptor(&self) -> Box<libusb_device_descriptor> {
+	pub fn descriptor(&self) -> libusb_device_descriptor {
 		unsafe{
-			let mut d: Box<libusb_device_descriptor> = box intrinsics::uninit();
-			libusb_get_device_descriptor(self.dev, &mut *d as *mut libusb_device_descriptor);
+			let mut d: libusb_device_descriptor = intrinsics::uninit();
+			libusb_get_device_descriptor(self.dev, &mut d as *mut libusb_device_descriptor);
 			d
 		}
 	}
