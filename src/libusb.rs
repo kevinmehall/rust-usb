@@ -14,8 +14,6 @@ pub use self::libusb_transfer_status::*;
 #[allow(missing_copy_implementations)]
 pub struct libusb_context;
 
-unsafe impl Send for *mut libusb_context {}
-
 #[repr(C)]
 #[allow(missing_copy_implementations)]
 pub struct libusb_device;
@@ -23,8 +21,6 @@ pub struct libusb_device;
 #[repr(C)]
 #[allow(missing_copy_implementations)]
 pub struct libusb_device_handle;
-
-unsafe impl Send for *mut libusb_device_handle {}
 
 #[link (name="usb-1.0")]
 
@@ -605,9 +601,6 @@ impl libusb_transfer {
 		num::FromPrimitive::from_u32(self.status).unwrap()
 	}
 }
-
-//for threading
-unsafe impl Send for *mut libusb_transfer {}
 
 /** Setup packet for control transfers. */
 #[repr(C)]
