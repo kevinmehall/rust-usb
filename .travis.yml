@@ -2,4 +2,4 @@ language: rust
 script:
   - sudo apt-get install libusb-1.0-0-dev
   - cargo build
-  - rustc examples/test/main.rs -L target
+  - rustc examples/test/main.rs -L target/debug/
