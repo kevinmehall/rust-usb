@@ -76,7 +76,7 @@ extern{
 /**
  * Device and/or Interface Class codes */
 #[repr(C)]
-#[derive(Copy, PartialEq, Eq, Debug)]
+#[derive(Copy, Clone, PartialEq, Eq, Debug)]
 pub enum libusb_class_code {
 	/** In the context of a \ref libusb_device_descriptor "device descriptor",
 	 * this bDeviceClass value indicates that each interface specifies its
@@ -139,7 +139,7 @@ pub enum libusb_class_code {
 /**
  * Descriptor types as defined by the USB specification. */
 #[repr(C)]
-#[derive(Copy, PartialEq, Eq, Debug)]
+#[derive(Copy, Clone, PartialEq, Eq, Debug)]
 pub enum libusb_descriptor_type {
 	/** Device descriptor. See libusb_device_descriptor. */
 	LIBUSB_DT_DEVICE = 0x01,
@@ -182,7 +182,7 @@ pub enum libusb_descriptor_type {
 }
 
 #[repr(C)]
-#[derive(Copy, PartialEq, Eq, Debug)]
+#[derive(Copy, Clone, PartialEq, Eq, Debug)]
 pub enum libusb_endpoint_direction {
 	/** In: device-to-host */
 	LIBUSB_ENDPOINT_IN = 0x80,
@@ -192,7 +192,7 @@ pub enum libusb_endpoint_direction {
 }
 
 #[repr(C)]
-#[derive(Copy, PartialEq, Eq, Debug)]
+#[derive(Copy, Clone, PartialEq, Eq, Debug)]
 pub enum libusb_transfer_type {
 	/** Control endpoint */
 	LIBUSB_TRANSFER_TYPE_CONTROL = 0,
@@ -213,7 +213,7 @@ pub enum libusb_transfer_type {
  * All multiple-byte fields are represented in host-endian format.
  */
 #[repr(C)]
-#[derive(Copy, Debug)]
+#[derive(Copy, Clone, Debug)]
 pub struct libusb_device_descriptor {
 	/** Size of this descriptor (in bytes) */
 	pub bLength: uint8_t,
@@ -438,7 +438,7 @@ pub struct libusb_config_descriptor {
  * an error code.
  */
 #[repr(C)]
-#[derive(Copy, PartialEq, Eq, Debug)]
+#[derive(Copy, Clone, PartialEq, Eq, Debug)]
 pub enum libusb_error {
 	/** Success (no error) */
 	LIBUSB_SUCCESS = 0,
@@ -489,7 +489,7 @@ pub enum libusb_error {
 /** \ingroup asyncio
  * Transfer status codes */
 #[repr(C)]
-#[derive(Copy, FromPrimitive, Debug, PartialEq, Eq)]
+#[derive(Copy, Clone, FromPrimitive, Debug, PartialEq, Eq)]
 pub enum libusb_transfer_status {
 	/** Transfer completed without error. Note that this does not indicate
 	 * that the entire amount of requested data was transferred. */
@@ -518,7 +518,7 @@ pub enum libusb_transfer_status {
 /** \ingroup asyncio
  * Isochronous packet descriptor. */
 #[repr(C)]
-#[derive(Copy, PartialEq, Eq, Debug)]
+#[derive(Copy, Clone, PartialEq, Eq, Debug)]
 pub struct libusb_iso_packet_descriptor {
 	/** Length of data to request in this packet */
 	length: c_uint,
@@ -604,7 +604,7 @@ impl libusb_transfer {
 
 /** Setup packet for control transfers. */
 #[repr(C)]
-#[derive(Copy, Debug)]
+#[derive(Copy, Clone, Debug)]
 pub struct libusb_control_setup {
 	/** Request type. Bits 0:4 determine recipient, see
 	 * \ref libusb_request_recipient. Bits 5:6 determine type, see

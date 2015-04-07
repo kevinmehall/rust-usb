@@ -13,7 +13,6 @@ use std::mem::transmute;
 use std::mem::size_of;
 use std::vec::Vec;
 use std::cell::UnsafeCell;
-use std::num::Int;
 
 pub mod libusb;
 
@@ -245,7 +244,7 @@ impl<'c> DeviceHandle<'c> {
 	pub fn ctrl_write(&self, bmRequestType: u8, bRequest: u8,
 		wValue:u16, wIndex: u16, buf: &[u8], timeout: u32) -> Result<(), libusb_transfer_status> {
 		let mut setup_buf: Vec<_> = repeat(0u8).take(size_of::<libusb_control_setup>()).collect();
-		fill_setup_buf(setup_buf.as_mut_slice(), bmRequestType, bRequest, wValue, wIndex, buf.len());
+		fill_setup_buf(&mut setup_buf, bmRequestType, bRequest, wValue, wIndex, buf.len());
 		setup_buf.push_all(buf);
 		self.write(0, LIBUSB_TRANSFER_TYPE_CONTROL, &setup_buf, timeout)
 	}
