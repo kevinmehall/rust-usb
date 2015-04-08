@@ -1,11 +1,11 @@
-#![ feature(libc, core, collections) ]
+#![ feature(libc, collections) ]
 #![ allow(non_snake_case) ]
 
 extern crate libc;
 
 use libusb::*;
 use libc::c_int;
-use std::intrinsics;
+use std::mem;
 use std::slice;
 use std::iter::repeat;
 use std::result::Result;
@@ -23,7 +23,7 @@ unsafe impl Sync for Context {}
 impl Context {
 	pub fn new() -> Context {
 		unsafe{
-			let mut ctx: *mut libusb_context = intrinsics::init();
+			let mut ctx: *mut libusb_context = mem::uninitialized();
 			let r = libusb_init(&mut ctx);
 			assert!(r == 0);
 			Context(ctx)
@@ -42,7 +42,7 @@ impl Context {
 
 	pub fn list_devices(&self) -> Vec<Device> {
 		unsafe{
-			let mut list: *mut *mut libusb_device = intrinsics::init();
+			let mut list: *mut *mut libusb_device = mem::uninitialized();
 			let num_devices = libusb_get_device_list(self.ptr(), &mut list);
 			let l = slice::from_raw_parts_mut(list, num_devices as usize);
 			let devices = l.iter().map(|i| Device { dev: *i, ctx: self }).collect();
@@ -73,7 +73,7 @@ pub struct Device<'c> {
 impl<'c> Device<'c> {
 	pub fn descriptor(&self) -> libusb_device_descriptor {
 		unsafe{
-			let mut d: libusb_device_descriptor = intrinsics::uninit();
+			let mut d: libusb_device_descriptor = mem::uninitialized();
 			libusb_get_device_descriptor(self.dev, &mut d as *mut libusb_device_descriptor);
 			d
 		}
@@ -93,7 +93,7 @@ impl<'c> Device<'c> {
 
 	pub fn open(&self) -> Result<DeviceHandle, c_int> {
 		unsafe {
-			let mut handle: *mut libusb_device_handle = intrinsics::uninit();
+			let mut handle: *mut libusb_device_handle = mem::uninitialized();
 			let r = libusb_open(self.dev, &mut handle);
 			if r == 0 {
 				Ok(DeviceHandle {
