@@ -1,7 +1,6 @@
 #![allow(bad_style)]
 
 use libc::{c_int, c_uint, c_void, size_t, uint8_t, uint16_t};
-use std::num;
 
 pub use self::libusb_class_code::*;
 pub use self::libusb_descriptor_type::*;
@@ -489,7 +488,7 @@ pub enum libusb_error {
 /** \ingroup asyncio
  * Transfer status codes */
 #[repr(C)]
-#[derive(Copy, Clone, FromPrimitive, Debug, PartialEq, Eq)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
 pub enum libusb_transfer_status {
 	/** Transfer completed without error. Note that this does not indicate
 	 * that the entire amount of requested data was transferred. */
@@ -567,7 +566,7 @@ pub struct libusb_transfer {
 	 * if there were errors in the frames. Use the
 	 * \ref libusb_iso_packet_descriptor::status "status" field in each packet
 	 * to determine if errors occurred. */
-	pub status: c_uint,
+	pub status: libusb_transfer_status,
 
 	/** Length of the data buffer */
 	pub length: c_int,
@@ -598,7 +597,7 @@ pub struct libusb_transfer {
 impl libusb_transfer {
 	#[inline]
 	pub fn get_status(&self) -> libusb_transfer_status {
-		num::FromPrimitive::from_u32(self.status).unwrap()
+		self.status
 	}
 }
 
