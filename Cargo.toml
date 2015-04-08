@@ -14,3 +14,6 @@ name = "usb"
 [[example]]
 name = "test"
 path = "examples/test/main.rs"
+
+[dependencies]
+libc = "0.1"
