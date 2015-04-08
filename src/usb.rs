@@ -1,4 +1,4 @@
-#![ feature(libc, collections) ]
+#![ feature(libc) ]
 #![ allow(non_snake_case) ]
 
 extern crate libc;
@@ -244,7 +244,7 @@ impl<'c> DeviceHandle<'c> {
 		wValue:u16, wIndex: u16, buf: &[u8], timeout: u32) -> Result<(), libusb_transfer_status> {
 		let mut setup_buf: Vec<_> = repeat(0u8).take(size_of::<libusb_control_setup>()).collect();
 		fill_setup_buf(&mut setup_buf, bmRequestType, bRequest, wValue, wIndex, buf.len());
-		setup_buf.push_all(buf);
+		setup_buf.extend(buf.iter().cloned());
 		self.write(0, LIBUSB_TRANSFER_TYPE_CONTROL, &setup_buf, timeout)
 	}
 }
