@@ -1,4 +1,4 @@
-#![ feature(libc, core, collections, unsafe_destructor) ]
+#![ feature(libc, core, collections) ]
 #![ allow(non_snake_case) ]
 
 extern crate libc;
@@ -107,7 +107,6 @@ impl<'c> Device<'c> {
 	}
 }
 
-#[unsafe_destructor]
 impl<'c> Drop for Device<'c> {
 	fn drop(&mut self) {
 		unsafe {
@@ -250,7 +249,6 @@ impl<'c> DeviceHandle<'c> {
 	}
 }
 
-#[unsafe_destructor]
 impl<'c> Drop for DeviceHandle<'c> {
 	fn drop(&mut self) {
 		unsafe {
