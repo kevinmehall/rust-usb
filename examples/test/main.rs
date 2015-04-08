@@ -1,5 +1,3 @@
-
-
 extern crate usb;
 use usb::libusb;
 
