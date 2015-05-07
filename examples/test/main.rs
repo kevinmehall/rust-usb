@@ -1,3 +1,5 @@
+#![feature(scoped)]
+
 extern crate usb;
 use usb::libusb;
 
