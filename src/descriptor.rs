@@ -11,9 +11,14 @@ pub mod descriptor_type {
     pub const OTHER_SPEED_CONFIGURATION: u8 = 7;
     pub const INTERFACE_POWER: u8 = 8;
 
-    pub const INTERFACE_ASSOCIATION: u8 = 0x0b;
-    pub const BOS: u8 = 0x0f;
-    pub const DEVICE_CAPABILITY: u8 = 0x10;
+    // USB 3.0 spec
+    pub const OTG: u8 = 9;
+    pub const DEBUG: u8 = 10;
+    pub const INTERFACE_ASSOCIATION: u8 = 11;
+    pub const BOS: u8 = 15;
+    pub const DEVICE_CAPABILITY: u8 = 16;
+    pub const SUPERSPEED_USB_ENDPOINT_COMPANION: u8 = 48;
+    pub const SUPERSPEEDPLUS_ISOCHRONOUS_ENDPOINT_COMPANION: u8 = 49;
 }
 
 /// Base class, as used in the `bDeviceClass` of a device descriptor or

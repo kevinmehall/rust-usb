@@ -1,5 +1,6 @@
 /// Standard requests, as used in the `bRequest` field of a setup packet.
 pub mod standard_request {
+    // USB 2.0
     pub const GET_STATUS: u8 = 0;
     pub const CLEAR_FEATURE: u8 = 1;
     pub const SET_FEATURE: u8 = 3;
@@ -11,6 +12,23 @@ pub mod standard_request {
     pub const GET_INTERFACE: u8 = 10;
     pub const SET_INTERFACE: u8 = 11;
     pub const SYNCH_FRAME: u8 = 12;
+
+    // USB 3.0
+    pub const SET_ENCRYPTION: u8 = 13;
+    pub const GET_ENCRYPTION: u8 = 14;
+    pub const SET_HANDSHAKE: u8 = 15;
+    pub const GET_HANDSHAKE: u8 = 16;
+    pub const SET_CONNECTION: u8 = 17;
+    pub const SET_SECURITY_DATA: u8 = 18;
+    pub const GET_SECURITY_DATA: u8 = 19;
+    pub const SET_WUSB_DATA: u8 = 20;
+    pub const LOOPBACK_DATA_WRITE: u8 = 21;
+    pub const LOOPBACK_DATA_READ: u8 = 22;
+    pub const SET_INTERFACE_DS: u8 = 23;
+    pub const GET_FW_STATUS: u8 = 26;
+    pub const SET_FW_STATUS: u8 = 27;
+    pub const SET_SEL: u8 = 48;
+    pub const SET_ISOCH_DELAY: u8 = 49;
 }
 
 /// Feature selector, as used in `wValue` of a `SET_FEATURE` or `CLEAR_FEATURE`
