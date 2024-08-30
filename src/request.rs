@@ -44,6 +44,9 @@ pub mod request_type {
 }
 
 /// Standard requests, as used in the `bRequest` field of a setup packet.
+///
+/// Universal Serial Bus Specification Revision 2.0, Table 9-4\
+/// Universal Serial Bus 3.2 Specification, Table 9-5
 pub mod standard_request {
     // USB 2.0
     pub const GET_STATUS: u8 = 0;
@@ -78,6 +81,8 @@ pub mod standard_request {
 
 /// Feature selector, as used in `wValue` of a `SET_FEATURE` or `CLEAR_FEATURE`
 /// request.
+///
+/// Universal Serial Bus Specification Revision 2.0, Table 9-6
 pub mod feature_selector {
     pub const ENDPOINT_HALT: u16 = 0;
     pub const DEVICE_REMOTE_WAKEUP: u16 = 1;
@@ -85,6 +90,8 @@ pub mod feature_selector {
 }
 
 /// Test mode, as used in the upper byte of `wIndex` of a `SET_FEATURE` request.
+///
+/// Universal Serial Bus Specification Revision 2.0, Table 9-7
 pub mod test_mode {
     pub const TEST_J: u8 = 0x01;
     pub const TEST_K: u8 = 0x02;

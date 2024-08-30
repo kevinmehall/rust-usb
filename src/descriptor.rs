@@ -1,5 +1,8 @@
-/// Descriptor type, as used in the second byte of a descriptor or `wValue` in
-/// a `GET_DESCRIPTOR` request.
+/// Descriptor type, as used in the second byte of a descriptor or high byte of
+/// `wValue` in a `GET_DESCRIPTOR` request.
+///
+/// Universal Serial Bus Specification Revision 2.0, Table 9-5\
+/// Universal Serial Bus 3.2 Specification, Table 9-6
 pub mod descriptor_type {
     // USB 2.0 spec
     pub const DEVICE: u8 = 1;
@@ -21,9 +24,11 @@ pub mod descriptor_type {
     pub const SUPERSPEEDPLUS_ISOCHRONOUS_ENDPOINT_COMPANION: u8 = 49;
 }
 
-/// Base class, as used in the `bDeviceClass` of a device descriptor or
+/// Base class codes, as used in the `bDeviceClass` of a device descriptor or
 /// `bInterfaceClass` of an interface descriptor.
-pub mod class {
+///
+/// * [Defined Class Codes](https://usb.org/defined-class-codes)
+pub mod class_code {
     /// Used on the device level when class is defined per-interface
     pub const DEVICE: u8 = 0x00;
     pub const AUDIO: u8 = 0x01;
@@ -42,9 +47,10 @@ pub mod class {
     pub const WIRELESS: u8 = 0xE0;
     pub const MISCELLANEOUS: u8 = 0xEF;
     pub const APPLICATION: u8 = 0xFE;
-    pub const VENDOR_SPECIFIC: u8 = 0xff;
+    pub const VENDOR_SPECIFIC: u8 = 0xFF;
 }
 
+/// Language ID, as used in `wIndex` in a `GET_DESCRIPTOR` request
 pub mod language_id {
     pub const ENGLISH_US: u16 = 0x0409;
 }
