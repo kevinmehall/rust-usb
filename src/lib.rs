@@ -7,4 +7,5 @@ mod endpoint;
 pub use endpoint::endpoint_attributes;
 
 mod request;
-pub use request::{feature_selector, standard_request, test_mode};
+pub use request::{feature_selector, request_type, standard_request, test_mode};
+

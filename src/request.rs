@@ -1,3 +1,48 @@
+/// `bmRequestType` field of the SETUP packet.
+pub mod request_type {
+    /// Mask for bit 7 of `bmRequestType`.
+    pub const DIRECTION_MASK: u8 = 0x80;
+
+    /// Bit 7 of `bmRequestType`: Direction field.
+    pub mod direction {
+        pub const IN: u8 = 0x80;
+        pub const OUT: u8 = 0x00;
+    }
+
+    /// Mask for bits 6..5 of `bmRequestType`.
+    pub const REQUEST_TYPE_MASK: u8 = 0b11 << 5;
+
+    /// Bits 6..5 of `bmRequestType`: Request type.
+    pub mod request_type {
+        /// Request defined by USB standard
+        pub const STANDARD: u8 = 0 << 5;
+
+        /// Request defined by class
+        pub const CLASS: u8 = 1 << 5;
+
+        /// Request defined by vendor
+        pub const VENDOR: u8 = 2 << 5;
+    }
+
+    /// Mask for bits 4..0 of `bmRequestType`
+    pub const RECIPIENT_MASK: u8 = 0b11111;
+
+    /// Bits 6..5 of `bmRequestType`: Recipient type.
+    pub mod recipient {
+        /// Request is targeting the device as a whole.
+        pub const DEVICE: u8 = 0;
+
+        /// Request is targeting the interface specified in `wIndex`.
+        pub const INTERFACE: u8 = 1;
+
+        /// Request is targeting the  endpoint specified in `wIndex`.
+        pub const ENDPOINT: u8 = 2;
+
+        /// Other
+        pub const OTHER: u8 = 3;
+    }
+}
+
 /// Standard requests, as used in the `bRequest` field of a setup packet.
 pub mod standard_request {
     // USB 2.0
