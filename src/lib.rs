@@ -13,3 +13,5 @@ pub use endpoint::endpoint_attributes;
 mod request;
 pub use request::{feature_selector, request_type, standard_request, test_mode};
 
+mod bos;
+pub use bos::capability_type;
