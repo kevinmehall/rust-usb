@@ -1,3 +1,18 @@
+/// `bEndpointAddress` field of the endpoint descriptor.
+pub mod endpoint_address {
+    /// Bit 3..0 of endpoint `bEndpointAddress`: Address
+    pub const ADDR_MASK: u8 = 0x0F;
+
+    /// Bit 7 of endpoint `bEndpointAddress`: Direction
+    pub const DIR_MASK: u8 = 0x80;
+
+    /// Out: Host to device
+    pub const OUT: u8 = 0x00;
+
+    /// In: Device to host
+    pub const IN: u8 = 0x80;
+}
+
 /// `bmAttributes` field of the endpoint descriptor.
 pub mod endpoint_attributes {
     /// Mask for bits 1..0.
