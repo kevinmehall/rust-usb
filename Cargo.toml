@@ -1,9 +1,9 @@
 [package]
 name = "usb"
 version = "0.3.0"
+edition = "2021"
 authors = [ "Kevin Mehall <km@kevinmehall.net>" ]
 description = "Common definitions of USB constants"
 keywords = ["embedded"]
 license = "0BSD"
 repository = "https://github.com/kevinmehall/rust-usb"
-
